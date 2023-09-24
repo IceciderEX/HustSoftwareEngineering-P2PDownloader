@@ -122,6 +122,8 @@ class Encode:
             return self._encode_str(data)
         elif type(data) == int:
             return self._encode_int(data)
+        elif type(data) == bytes:
+            return self._encode_bytes(data)
         elif type(data) == list:
             return self._encode_list(data)
         elif type(data) == dict or type(data) == OrderedDict:
@@ -134,6 +136,13 @@ class Encode:
 
     def _encode_str(self, value: str):
         return str.encode(str(len(value)) + ':' + value, 'utf-8')
+
+    def _encode_bytes(self, value: str):
+        result = bytearray()
+        result += str.encode(str(len(value)))
+        result += b':'
+        result += value
+        return result
 
     def _encode_list(self, data):
         result = bytearray('l', 'utf-8')
