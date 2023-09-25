@@ -14,7 +14,7 @@ class Torrent:
             meta_info = f.read()  # bytes
             self.meta_info = bencoding.Decode(meta_info).decode()  # OrderedDict
             info_hash = bencoding.Encode(self.meta_info[b'info']).encode()  # bytes
-            self.info_hash = sha1(info_hash).digest()  # str size=20
+            self.info_hash: bytes = sha1(info_hash).digest()  # str size=20
             if b'files' in self.meta_info[b'info']:
                 raise RuntimeError("Do not support multiple files now!")
 
