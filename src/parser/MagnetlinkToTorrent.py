@@ -1,6 +1,7 @@
 import bencodepy
 import MagnetlinkParser
 
+
 class Torrent:
     def __init__(self, info_hash, display_name, trackers):
         self.info_hash = info_hash

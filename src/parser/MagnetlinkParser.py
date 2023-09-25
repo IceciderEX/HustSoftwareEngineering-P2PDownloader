@@ -2,7 +2,6 @@ import re
 
 
 class magnetLink:
-
     def __init__(self, link, info_hash, display_name, trackers):
         self.link = link
         self.info_hash = info_hash
@@ -34,7 +33,3 @@ class magnetlinkParser:
 link_to_parse = magnetlinkParser(
     "magnet:?xt=urn:btih:20CF64B3DEDD1A4DF47B3D03616BAC667D9BCC72&dn=example_file&tr=http%3A%2F"
     "%2Ftracker.example.com%3A6969%2Fannounce").parse_magnetlink()
-
-print("infoHash:", link_to_parse.info_hash)
-print("displayName:", link_to_parse.display_name)
-print("trackers:", link_to_parse.trackers)
