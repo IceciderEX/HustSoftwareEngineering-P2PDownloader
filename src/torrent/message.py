@@ -56,6 +56,10 @@ class HandShake(Message):
         return HandShake(unpack_data[2], unpack_data[3])
 
 
+class KeepAlive:
+    pass
+
+
 class Choke(Message):
 
     def encode(self):
