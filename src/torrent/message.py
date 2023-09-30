@@ -186,5 +186,5 @@ class Cancel(Message):
 
     @classmethod
     def decode(cls, data: bytes):
-        parts = struct.unpack('>IbIII', data)
-        return Cancel(parts[2], parts[3], parts[4])
+        unpack_data = struct.unpack('>IbIII', data)
+        return Cancel(unpack_data[2], unpack_data[3], unpack_data[4])
