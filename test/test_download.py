@@ -10,7 +10,7 @@ from src.torrent.torrent import Torrent
 def main():
     logging.basicConfig(level=logging.INFO)
     loop = asyncio.get_event_loop()
-    client = TorrentClient(Torrent("../file/debian-12.1.0-amd64-netinst.iso.torrent"))
+    client = TorrentClient(Torrent("../file/B3273F22E02EC398C9C2B18F60EEF8166C89FB70.torrent"))
     task = loop.create_task(client.start())
 
     def signal_handler(*_):
