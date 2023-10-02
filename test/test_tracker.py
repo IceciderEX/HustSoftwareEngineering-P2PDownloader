@@ -4,7 +4,7 @@ from src.torrent.torrent import Torrent
 
 
 async def test_connect():
-    filepath = './debian-12.1.0-amd64-netinst.iso.torrent'
+    filepath = '../file/debian-12.1.0-amd64-netinst.iso.torrent'
     torrent_file = Torrent(filepath)
     bt_tracker = Tracker(torrent_file)
     try:

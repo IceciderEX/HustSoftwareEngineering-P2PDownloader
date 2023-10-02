@@ -7,7 +7,7 @@ from enum import Enum
 import bitstring
 
 
-class MsgId(Enum):
+class MsgId:
     Choke = 0
     Unchoke = 1
     Interested = 2
@@ -35,15 +35,19 @@ class Message:
 
 
 class HandShake(Message):
-    fmt = '>B19s8x20s20s'
+    length = 49 + 19
 
     def __init__(self, info_hash: bytes, peer_id: bytes):
+        if isinstance(info_hash, str):
+            info_hash = info_hash.encode('utf-8')
+        if isinstance(peer_id, str):
+            peer_id = peer_id.encode('utf-8')
         self.info_hash = info_hash
         self.peer_id = peer_id
 
     def encode(self):
-        return struct.pack(HandShake.fmt,
-                           19, 'BitTorrent protocol', self.info_hash, self.peer_id)
+        return struct.pack('>B19s8x20s20s',
+                           19, b'BitTorrent protocol', self.info_hash, self.peer_id)
 
     @classmethod
     def decode(cls, data: bytes):
@@ -52,7 +56,7 @@ class HandShake(Message):
             logging.error(f"HandShake Decode: data length {len(data)}")
             raise RuntimeError("HandShake Decode receive wrong data")
 
-        unpack_data = struct.unpack(HandShake.fmt, data)
+        unpack_data = struct.unpack('>B19s8x20s20s', data)
         return HandShake(unpack_data[2], unpack_data[3])
 
 
@@ -77,6 +81,9 @@ class Interested(Message):
 
     def encode(self):
         return struct.pack('>Ib', 1, MsgId.Interested)
+
+    def __str__(self):
+        return "Interested"
 
 
 class NotInterested(Message):
@@ -117,6 +124,9 @@ REQUEST_SIZE = 2 ** 14
 
 
 class Request(Message):
+    """
+    Request是向Peer请求块信息的类
+    """
 
     def __init__(self, index: int, begin: int, length: int = REQUEST_SIZE):
         self.index = index
