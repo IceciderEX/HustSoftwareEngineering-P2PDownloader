@@ -1,6 +1,6 @@
 # @author 郑卯杨
 # @date 2023/9/24
-# @description 实现Torrent类，解码.torrent文件并返回相关信息
+# @description 实现Torrent类,存储解析.torrent后的OrderedDict数据
 from hashlib import sha1
 from typing import List
 
@@ -8,7 +8,7 @@ from . import bencoding
 
 
 class Torrent:
-    def __init__(self, filepath):
+    def __init__(self, filepath: str):
         self.filepath = filepath
         with open(filepath, 'rb') as f:
             meta_info = f.read()  # bytes
@@ -28,6 +28,9 @@ class Torrent:
 
     @property
     def pieces(self) -> List[bytes]:
+        """
+        :return: 列表的每一项是对应的piece使用sha1算法计算出的hash
+        """
         res = []
         offset = 0
         data = self.meta_info[b'info'][b'pieces']
