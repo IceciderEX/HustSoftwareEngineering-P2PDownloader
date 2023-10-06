@@ -4,9 +4,9 @@ import time
 from collections import namedtuple, defaultdict
 from typing import List, Dict
 from bitstring import BitArray
-from torrent import Torrent
-from piece import *
-from message import REQUEST_SIZE
+from src.torrent.torrent import Torrent
+from src.torrent.piece import *
+from src.torrent.message import REQUEST_SIZE
 
 # added标识block被加入请求列表的时间,相当于定时器
 PendingRequest = namedtuple('PendingRequest', ['block', 'added'])
@@ -17,12 +17,13 @@ class PieceManager:
         self.torrent = torrent
         self.peers: Dict[bytes, BitArray] = {}
         self.pending_blocks: List[PendingRequest] = []
-        self.missing_pieces: List[Piece] = self._init_pieces()
+        self.missing_pieces: List[Piece] = []
         self.ongoing_pieces: List[Piece] = []
         self.have_pieces: List[Piece] = []
         self.max_pending_time = 300 * 1000  # 5分钟
         self.total_pieces = len(torrent.pieces)
         self.fd = os.open(self.torrent.name, os.O_RDWR | os.O_CREAT)  # 在当前目录下创建下载的文件
+        self.missing_pieces: List[Piece] = self._init_pieces()
 
     def _init_pieces(self) -> List[Piece]:
         """
@@ -50,9 +51,11 @@ class PieceManager:
         if self.fd:
             os.close(self.fd)
 
+    @property
     def finished(self) -> bool:
         return len(self.have_pieces) == self.total_pieces
 
+    @property
     def bytes_downloaded(self) -> int:
         return len(self.have_pieces) * self.torrent.piece_length
 

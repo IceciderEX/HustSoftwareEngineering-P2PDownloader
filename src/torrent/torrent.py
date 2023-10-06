@@ -1,6 +1,7 @@
 # @author 郑卯杨
 # @date 2023/9/24
 # @description 实现Torrent类,存储解析.torrent后的OrderedDict数据
+import logging
 from hashlib import sha1
 from typing import List
 
@@ -17,6 +18,7 @@ class Torrent:
             self.info_hash: bytes = sha1(info_hash).digest()  # str size=20
             if b'files' in self.meta_info[b'info']:
                 raise RuntimeError("Do not support multiple files now!")
+            logging.info(f"announce={self.meta_info[b'announce'].decode('utf-8')}")
 
     @property
     def announce(self) -> str:
