@@ -72,7 +72,7 @@ class TrackerResponse:
             return [(socket.inet_ntoa(p[:4]), _decode_port(p[4:]))
                     for p in peers]
 
-
+# 随机生成-PC0223-????????????类型的id
 def _calculate_peer_id():
     return '-PC0223-' + ''.join([str(random.randint(0, 9)) for _ in range(12)])
 
@@ -80,7 +80,7 @@ def _calculate_peer_id():
 class Tracker:
     def __init__(self, torrent: Torrent):
         self.torrent = torrent
-        self.peer_id = _calculate_peer_id()  # urlen编码的 20 字节字符串
+        self.peer_id = _calculate_peer_id()  # urlen 编码的 20 字节字符串
         self.http_client = aiohttp.ClientSession()
         self.use_udp = self.torrent.announce.startswith("udp")
 
@@ -89,10 +89,11 @@ class Tracker:
         params = {
             'info_hash': self.torrent.info_hash,
             'peer_id': self.peer_id,
+            # 随机取6881-6690作为端口
             'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
             'uploaded': uploaded,
-            'downloaded': downloaded,
-            'left': self.torrent.length - downloaded,
+            'downloaded': downloaded,  # 已下载的length
+            'left': self.torrent.length - downloaded,  # 剩下需要download的length
             'compact': 1
         }
         print(self.torrent.announce)
