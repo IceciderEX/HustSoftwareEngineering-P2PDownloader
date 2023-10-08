@@ -10,7 +10,11 @@ from src.torrent.torrent import Torrent
 def main():
     logging.basicConfig(level=logging.INFO)
     loop = asyncio.get_event_loop()
+<<<<<<< HEAD
     client = TorrentClient(Torrent("../file/1.torrent"))
+=======
+    client = TorrentClient(Torrent("../file/old.torrent"))
+>>>>>>> origin/zmy_torrent
     task = loop.create_task(client.start())
 
     def signal_handler(*_):

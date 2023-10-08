@@ -179,8 +179,13 @@ class Connection:
 
     async def _start(self):
         while STOPPED not in self.my_state:
+<<<<<<< HEAD
             ip, port = await self.queue.get()  # 得到peer的ip与port
             logging.info(f"Got assigned peer with {ip}")
+=======
+            ip, port = await self.queue.get()
+            logging.info(f"Got assigned peer with {ip}:{port}")
+>>>>>>> origin/zmy_torrent
             try:
                 self.reader, self.writer = await asyncio.open_connection(ip, port)
                 logging.info(f"Connecting to peer {ip}")
