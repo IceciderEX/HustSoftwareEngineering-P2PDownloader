@@ -103,7 +103,6 @@ INTERESTED = "Interested"
 PENDING = 'pending_request'
 
 
-# peers' connect
 class Connection:
     def __init__(self, queue: Queue, info_hash: bytes,
                  peer_id: bytes, piece_manager: PieceManager,
@@ -120,16 +119,13 @@ class Connection:
         self.on_block_cb = on_block_cb
         self.future = asyncio.ensure_future(self._start())
 
-    """
-        发送并解析handshake消息
-        握手信息格式(0x13 + 'BitTorrent protocol' + 00000000 + info_hash + peer_id)
-    """
     async def _handshake(self) -> bytes:
-        # 发送第一次handshake信息
+        """
+        发送并解析handshake消息
+        """
         self.writer.write(HandShake(self.info_hash, self.peer_id).encode())
         await self.writer.drain()
 
-        # 读取第二次handshake
         buf = b''
         tries = 1
         while len(buf) < HandShake.length and tries < 10:
@@ -153,7 +149,6 @@ class Connection:
         self.writer.write(message.encode())
         await self.writer.drain()
 
-    # 下一个request（包含piece的信息）
     async def _next_request(self):
         block = self.piece_manager.next_request(self.remote_id)
         if block:
@@ -179,19 +174,14 @@ class Connection:
 
     async def _start(self):
         while STOPPED not in self.my_state:
-<<<<<<< HEAD
-            ip, port = await self.queue.get()  # 得到peer的ip与port
-            logging.info(f"Got assigned peer with {ip}")
-=======
             ip, port = await self.queue.get()
             logging.info(f"Got assigned peer with {ip}:{port}")
->>>>>>> origin/zmy_torrent
             try:
                 self.reader, self.writer = await asyncio.open_connection(ip, port)
                 logging.info(f"Connecting to peer {ip}")
                 buffer = await self._handshake()
                 self.my_state.append(CHOKED)
-                await self._send_interested()  # 等待interested信息
+                await self._send_interested()
                 self.my_state.append(INTERESTED)
                 async for message in PeerStreamIterator(self.reader, buffer):
                     if STOPPED in self.my_state:
