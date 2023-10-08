@@ -3,7 +3,6 @@
 # @description 封装与Peer沟通的Message
 import logging
 import struct
-from enum import Enum
 import bitstring
 
 

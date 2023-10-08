@@ -175,7 +175,7 @@ class Connection:
     async def _start(self):
         while STOPPED not in self.my_state:
             ip, port = await self.queue.get()
-            logging.info(f"Got assigned peer with {ip}")
+            logging.info(f"Got assigned peer with {ip}:{port}")
             try:
                 self.reader, self.writer = await asyncio.open_connection(ip, port)
                 logging.info(f"Connecting to peer {ip}")
