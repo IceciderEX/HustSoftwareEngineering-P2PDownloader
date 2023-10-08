@@ -1,0 +1,22 @@
+import asyncio
+from src.torrent.tracker import Tracker
+from src.torrent.torrent import Torrent
+
+
+async def test_connect():
+    filepath = '../file/B3273F22E02EC398C9C2B18F60EEF8166C89FB70.torrent'
+    torrent_file = Torrent(filepath)
+    bt_tracker = Tracker(torrent_file)
+    await bt_tracker.connect(True)
+    # try:
+    #     tracker_resp = await bt_tracker.connect(True)
+    #     print(tracker_resp.failure)
+    #     print(tracker_resp.complete)
+    #     print(tracker_resp.interval)
+    #     print(tracker_resp.peers)
+    # finally:
+    #     bt_tracker.close()
+
+
+if __name__ == '__main__':
+    asyncio.run(test_connect())
