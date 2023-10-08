@@ -1,5 +1,6 @@
 import logging
 import bencodepy
+import asyncio
 from ..torrent.torrent import Torrent
 from MagnetlinkParser import magnetLink
 

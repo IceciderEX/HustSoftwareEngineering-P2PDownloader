@@ -2,7 +2,7 @@ import hashlib
 
 import bencodepy
 import binascii
-import libtorrent
+import asyncio
 
 import MagnetlinkParser
 from src.torrent import bencoding

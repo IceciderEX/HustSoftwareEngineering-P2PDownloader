@@ -1,6 +1,6 @@
 import logging
 import re
-
+import asyncio
 
 class magnetLink:
     def __init__(self, link, info_hash, display_name, trackers):
