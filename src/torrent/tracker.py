@@ -155,12 +155,16 @@ class Tracker:
                 params['event'] = 'started'
             url = self.torrent.announce + "?" + urllib.parse.urlencode(params)
             logging.info('Connecting to tracker at: ' + url)
-            async with self.http_client.get(url) as resp:
-                if not resp.status == 200:
-                    raise ConnectionError('Unable to connect to tracker')
-                data = await resp.read()  # bencoded dictionary
-                return TrackerResponse(bencoding.Decode(data).decode())
-
+            try:
+                async with self.http_client.get(url) as resp:
+                    if not resp.status == 200:
+                        raise ConnectionError('Unable to connect to tracker')
+                    data = await resp.read()  # bencoded dictionary
+                    return TrackerResponse(bencoding.Decode(data).decode())
+            except ConnectionRefusedError:
+                logging.info("Tracker refused connection")
+            except aiohttp.ClientConnectorError:
+                logging.info("Tracker refused connection")
     def close(self):
         if self.use_udp:
             self.sock.close()
