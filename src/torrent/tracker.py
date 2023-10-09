@@ -95,7 +95,8 @@ class Tracker:
                 print(remote_ip, remote_port)
             else:
                 raise ConnectionError('Unable to connect to tracker')
-            self.sock = await asyncudp.create_socket(remote_addr=(remote_ip, remote_port))
+            if self.sock is None:
+                self.sock = await asyncudp.create_socket(remote_addr=(remote_ip, remote_port))
             connect_request = struct.pack('>QII', 0x41727101980, 0, 99)
             print("send connect request")
             self.sock.sendto(connect_request)
@@ -131,7 +132,8 @@ class Tracker:
             print(len(datagram[20:]))
             return TrackerResponse(dict_data)
         else:
-            self.http_client = aiohttp.ClientSession()
+            if self.http_client is None:
+                self.http_client = aiohttp.ClientSession()
             params = {
                 'info_hash': self.torrent.info_hash,
                 'peer_id': self.peer_id,

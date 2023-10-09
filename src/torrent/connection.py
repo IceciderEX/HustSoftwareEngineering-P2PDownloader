@@ -21,7 +21,7 @@ class PeerStreamIterator:
     async def __anext__(self):
         while True:
             try:
-                data = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
+                data = await asyncio.wait_for(self.reader.read(PeerStreamIterator.CHUNK_SIZE), timeout=10)
                 if data:
                     self.buffer += data
                     message = self.parse()
@@ -41,10 +41,12 @@ class PeerStreamIterator:
                 raise StopAsyncIteration()
             except StopAsyncIteration as e:
                 raise e
+            except TimeoutError:
+                raise TimeoutError()
             except Exception:
                 logging.exception('Error when iterating over stream!')
                 raise StopAsyncIteration()
-        raise StopAsyncIteration()
+        # raise StopAsyncIteration()
 
     def parse(self):
         header_length = 4
@@ -109,6 +111,8 @@ CHOKED = "choked"
 INTERESTED = "interested"
 PENDING = 'pending_request'
 
+TIME_OUT = 10
+
 
 class Connection:
     def __init__(self, queue: Queue, info_hash: bytes,
@@ -147,7 +151,7 @@ class Connection:
             raise ProtocolError("Handshake with invalid info_hash")
 
         self.remote_id = response.peer_id
-        logging.info("Handshake with peer was successful")
+        logging.info(f"Handshake with peer was successful")
         return buf[HandShake.length:]
 
     async def _send_interested(self) -> None:
@@ -161,22 +165,31 @@ class Connection:
         if block:
             message = Request(block.piece, block.offset, block.length)
 
-            logging.info(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
-                         f'of {block.length} bytes from peer {self.remote_id}')
+            logging.debug(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
+                          f'of {block.length} bytes from peer {self.remote_id}')
             self.writer.write(message.encode())
             await self.writer.drain()
+            logging.debug(f"gain block {block.offset / REQUEST_SIZE} for piece {block.piece} successfully")
 
     def stop(self):
         self.my_state.append(STOPPED)
         if not self.future.done():
             self.future.cancel()
 
-    def cancel(self):
+    async def cancel(self):
+        """
+        cancel 等待所有资源被释放完
+        """
         logging.info(f"Closing peer {self.remote_id}")
         if not self.future.done():
             self.future.cancel()
+            try:
+                await self.future
+            except asyncio.CancelledError:
+                pass
         if self.writer:
             self.writer.close()
+            await self.writer.wait_closed()
         self.queue.task_done()
 
     async def _start(self):
@@ -184,11 +197,13 @@ class Connection:
             ip, port = await self.queue.get()
             logging.info(f"Got assigned peer with {ip}:{port}")
             try:
-                self.reader, self.writer = await asyncio.open_connection(ip, port)
+                # self.reader, self.writer = await asyncio.open_connection(ip, port)
+                self.reader, self.writer = await asyncio.wait_for(asyncio.open_connection(ip, port),
+                                                                  timeout=TIME_OUT)  # 设置最大等待时间为5s
                 logging.info(f"Connecting to peer {ip}:{port}")
-                buffer = await self._handshake()
+                buffer = await asyncio.wait_for(self._handshake(), timeout=TIME_OUT)
                 self.my_state.append(CHOKED)
-                await self._send_interested()
+                await asyncio.wait_for(self._send_interested(), timeout=TIME_OUT)
                 self.my_state.append(INTERESTED)
                 async for message in PeerStreamIterator(self.reader, buffer):
                     if STOPPED in self.my_state:
@@ -225,7 +240,7 @@ class Connection:
                         if INTERESTED in self.my_state:
                             if PENDING not in self.my_state:
                                 self.my_state.append(PENDING)
-                                await self._next_request()
+                                await asyncio.wait_for(self._next_request(), timeout=TIME_OUT)
 
             except ProtocolError:
                 logging.exception("protocol error")
@@ -234,7 +249,7 @@ class Connection:
             except (ConnectionResetError, CancelledError):
                 logging.warning('Connection closed')
             except Exception:
-                logging.exception('An error occurred')
-                self.cancel()
+                logging.exception('An unknown error occurred')
+                # await self.cancel()
                 # raise e
-            self.cancel()
+            await self.cancel()

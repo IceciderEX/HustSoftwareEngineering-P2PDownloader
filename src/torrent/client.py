@@ -12,7 +12,7 @@ from src.torrent.torrent import Torrent
 from src.torrent.tracker import Tracker
 from src.torrent.connection import Connection
 
-MAX_PEER_CONNECTIONS = 40
+MAX_PEER_CONNECTIONS = 12
 
 
 class TorrentClient:
@@ -54,7 +54,7 @@ class TorrentClient:
 
         previous = None
         interval = 2 * 60  # announce call 默认间隔
-
+        i = 0
         while True:
             if self.piece_manager.finished:
                 logging.info('Torrent fully downloaded!')
@@ -63,8 +63,10 @@ class TorrentClient:
                 logging.info('Aborting download...')
                 break
 
-            current = time.time()
-            if (not previous) or (previous + interval < current):
+            current = round(time.time())
+            if (not previous) or (previous + interval < current) or self.available_peers.empty():
+                logging.info(f"向tracker服务器发送第{i}次请求")
+                i += 1
                 response = await self.tracker.connect(
                     first=previous if previous else False,
                     uploaded=0,
@@ -77,5 +79,6 @@ class TorrentClient:
                     for peer in response.peers:
                         self.available_peers.put_nowait(peer)
             else:
+                logging.info("client sleep 5s")
                 await asyncio.sleep(5)
         self.stop()

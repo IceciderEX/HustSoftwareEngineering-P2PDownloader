@@ -8,8 +8,14 @@ from src.torrent.torrent import Torrent
 from src.torrent.piece import *
 from src.torrent.message import REQUEST_SIZE
 
+
 # added标识block被加入请求列表的时间,相当于定时器
-PendingRequest = namedtuple('PendingRequest', ['block', 'added'])
+# PendingRequest = namedtuple('PendingRequest', ['block', 'added'])
+
+class PendingRequest:
+    def __init__(self, block, added):
+        self.block = block
+        self.added = added
 
 
 class PieceManager:
@@ -20,7 +26,7 @@ class PieceManager:
         self.missing_pieces: List[Piece] = []
         self.ongoing_pieces: List[Piece] = []
         self.have_pieces: List[Piece] = []
-        self.max_pending_time = 300 * 1000  # 5分钟
+        self.max_pending_time = 120  # 2分钟
         self.total_pieces = len(torrent.pieces)
         self.fd = os.open(self.torrent.name, os.O_RDWR | os.O_CREAT)  # 在当前目录下创建下载的文件
         self.missing_pieces: List[Piece] = self._init_pieces()
@@ -77,7 +83,7 @@ class PieceManager:
         """
         :return: 如果Block请求时间超过了max_pending_time,需要被重新请求
         """
-        current = round(time.time() * 1000)
+        current = round(time.time())
         for request in self.pending_blocks:
             if self.peers[peer_id][request.block.piece]:
                 if request.added + self.max_pending_time < current:
@@ -94,7 +100,7 @@ class PieceManager:
             if self.peers[peer_id][piece.index]:
                 block = piece.next_request()
                 if block:
-                    self.pending_blocks.append(PendingRequest(block, round(time.time() * 1000)))
+                    self.pending_blocks.append(PendingRequest(block, round(time.time())))
                     return block
         return None
 
