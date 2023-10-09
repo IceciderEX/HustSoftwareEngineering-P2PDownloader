@@ -14,7 +14,7 @@ from src.torrent.torrent import Torrent
 from src.torrent.tracker import Tracker
 from src.torrent.connection import Connection
 
-MAX_PEER_CONNECTIONS = 20
+MAX_PEER_CONNECTIONS = 40
 
 
 class TorrentClient:
@@ -55,7 +55,7 @@ class TorrentClient:
                       for _ in range(MAX_PEER_CONNECTIONS)]
 
         previous = None
-        interval = 30 * 60
+        interval = 2 * 60  # announce call 默认间隔
 
         while True:
             if self.piece_manager.finished:

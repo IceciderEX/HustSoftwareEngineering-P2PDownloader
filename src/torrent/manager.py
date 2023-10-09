@@ -20,7 +20,7 @@ class PieceManager:
         self.missing_pieces: List[Piece] = []
         self.ongoing_pieces: List[Piece] = []
         self.have_pieces: List[Piece] = []
-        self.max_pending_time = 120 * 1000  # 2分钟
+        self.max_pending_time = 300 * 1000  # 5分钟
         self.total_pieces = len(torrent.pieces)
         self.fd = os.open(self.torrent.name, os.O_RDWR | os.O_CREAT)  # 在当前目录下创建下载的文件
         self.missing_pieces: List[Piece] = self._init_pieces()
@@ -107,7 +107,7 @@ class PieceManager:
             if not self.peers[peer_id][piece.index]:
                 # 如果peer没有该piece
                 continue
-            for p in self.peers.keys():
+            for p in self.peers:
                 if self.peers[p][piece.index]:
                     piece_count[piece] += 1
         rarest_piece: Piece = min(piece_count, key=lambda p: piece_count[p])
@@ -145,7 +145,7 @@ class PieceManager:
         return block
 
     def block_received(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes):
-        logging.info(f"Received block {block_offset} for piece {piece_index} from peer {peer_id}: ")
+        logging.debug(f"Received block {block_offset} for piece {piece_index} from peer {peer_id}: ")
         for index, request in enumerate(self.pending_blocks):
             if request.block.piece == piece_index and request.block.offset == block_offset:
                 del self.pending_blocks[index]

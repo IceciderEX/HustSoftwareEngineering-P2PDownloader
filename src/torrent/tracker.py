@@ -90,13 +90,9 @@ class Tracker:
             match = re.search(r'udp://([^:/]+:\d+)/', self.torrent.announce)
             if match:
                 tracker_address = match.group(1)
-                # print(tracker_address)
-                # print(tracker_address.split(":"))
                 remote_ip, remote_port = tracker_address.split(":")
                 remote_port = int(remote_port)
                 print(remote_ip, remote_port)
-                # print(type(remote_ip))
-                # print(type(remote_port))
             else:
                 raise ConnectionError('Unable to connect to tracker')
             self.sock = await asyncudp.create_socket(remote_addr=(remote_ip, remote_port))
@@ -105,11 +101,6 @@ class Tracker:
             self.sock.sendto(connect_request)
             datagram, remote_addr = await self.sock.recvfrom()
             action, transaction_id, connection_id = struct.unpack('>IIQ', datagram)
-            # if action == 0 and transaction_id == 99:
-            #     print('成功连接到Tracker，Connection ID:', connection_id)
-            # else:
-            #     print('连接到Tracker失败')
-            #     print(f"{action=},{transaction_id=},{connection_id=}")
             if not action == 0 and not transaction_id == 99:
                 raise ConnectionError('Unable to connect to tracker')
             announce_request = struct.pack(
@@ -139,7 +130,6 @@ class Tracker:
                          b"seeders": seeders, b"peers": datagram[20:]}
             print(len(datagram[20:]))
             return TrackerResponse(dict_data)
-            # print(bencoding.Decode(data).decode())
         else:
             self.http_client = aiohttp.ClientSession()
             params = {

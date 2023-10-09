@@ -41,7 +41,8 @@ class Torrent:
         res = []
         offset = 0
         data = self.meta_info[b'info'][b'pieces']
-        while offset < len(data):
+        length = len(data)
+        while offset < length:
             res.append(data[offset:offset + 20])
             offset += 20
         return res

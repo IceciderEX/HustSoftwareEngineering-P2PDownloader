@@ -19,35 +19,40 @@ class PeerStreamIterator:
         return self
 
     async def __anext__(self):
-        try:
-            data = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
-            if data:
-                self.buffer += data
-                message = self.parse()
-                if message:
-                    return message
-                return None
-            else:
-                if self.buffer:
+        while True:
+            try:
+                data = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
+                if data:
+                    self.buffer += data
                     message = self.parse()
                     if message:
                         return message
-                    return None
-                # raise StopAsyncIteration()
-                return None
-        except ConnectionResetError:
-            logging.debug('Connection closed by peer')
-            raise StopAsyncIteration()
-        except Exception:
-            logging.exception("Error when iterating over stream!")
-            raise StopAsyncIteration()
+                else:
+                    logging.debug('No data read from stream')
+                    if self.buffer:
+                        message = self.parse()
+                        if message:
+                            return message
+                    raise StopAsyncIteration()
+            except ConnectionResetError:
+                logging.debug('Connection closed by peer')
+                raise StopAsyncIteration()
+            except CancelledError:
+                raise StopAsyncIteration()
+            except StopAsyncIteration as e:
+                raise e
+            except Exception:
+                logging.exception('Error when iterating over stream!')
+                raise StopAsyncIteration()
+        raise StopAsyncIteration()
 
     def parse(self):
         header_length = 4
-        if len(self.buffer) == 4:
-            return KeepAlive()
+
         if len(self.buffer) > 4:
             message_length = struct.unpack('>I', self.buffer[:4])[0]
+            if message_length == 0:
+                return KeepAlive()
             if len(self.buffer) >= message_length:
                 def _consume():
                     self.buffer = self.buffer[header_length + message_length:]
@@ -100,8 +105,8 @@ class ProtocolError(BaseException):
 
 
 STOPPED = "stopped"
-CHOKED = "Choked"
-INTERESTED = "Interested"
+CHOKED = "choked"
+INTERESTED = "interested"
 PENDING = 'pending_request'
 
 
@@ -180,15 +185,13 @@ class Connection:
             logging.info(f"Got assigned peer with {ip}:{port}")
             try:
                 self.reader, self.writer = await asyncio.open_connection(ip, port)
-                logging.info(f"Connecting to peer {ip}")
+                logging.info(f"Connecting to peer {ip}:{port}")
                 buffer = await self._handshake()
                 self.my_state.append(CHOKED)
                 await self._send_interested()
                 self.my_state.append(INTERESTED)
                 async for message in PeerStreamIterator(self.reader, buffer):
                     if STOPPED in self.my_state:
-                        break
-                    if message is None:
                         break
                     if type(message) is BitField:
                         self.piece_manager.add_peer(self.remote_id, message.bitfield)
