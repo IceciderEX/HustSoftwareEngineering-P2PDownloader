@@ -82,7 +82,9 @@ class PieceManager:
             if self.peers[peer_id][request.block.piece]:
                 if request.added + self.max_pending_time < current:
                     logging.info(f"Re-requesting block {request.block.offset} for piece {request.block.piece}")
-                    request.added = current
+
+                    request._replace(added=current)
+                    # request.added = current
                     return request.block
         return None
 

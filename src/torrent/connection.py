@@ -161,7 +161,7 @@ class Connection:
         if block:
             message = Request(block.piece, block.offset, block.length)
 
-            logging.info(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
+            logging.debug(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
                          f'of {block.length} bytes from peer {self.remote_id}')
             self.writer.write(message.encode())
             await self.writer.drain()
