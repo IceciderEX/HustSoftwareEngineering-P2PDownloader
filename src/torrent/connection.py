@@ -15,7 +15,7 @@ class PeerStreamIterator:
         self.reader = reader
         self.buffer = initial if initial else b''
 
-    async def __aiter__(self):
+    def __aiter__(self):
         return self
 
     async def __anext__(self):
@@ -142,7 +142,7 @@ class Connection:
             raise ProtocolError("Handshake with invalid info_hash")
 
         self.remote_id = response.peer_id
-        logging.info("Handshake with peer was successful")
+        logging.info(f"Handshake with peer" + str(self.remote_id) + "was successful")
         return buf[HandShake.length:]
 
     async def _send_interested(self) -> None:
@@ -230,6 +230,8 @@ class Connection:
                 logging.warning('Unable to connect to peer')
             except (ConnectionResetError, CancelledError):
                 logging.warning('Connection closed')
+            except OSError:
+                logging.info("Connection overtime!")
             except Exception:
                 logging.exception('An error occurred')
                 self.cancel()
