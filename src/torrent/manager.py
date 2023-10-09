@@ -73,7 +73,7 @@ class PieceManager:
         if peer_id in self.peers:
             del self.peers[peer_id]
 
-    def _expired_requests(self, peer_id: bytes) -> Block | None:
+    def _expired_requests(self, peer_id: bytes) -> Optional[Block]:
         """
         :return: 如果Block请求时间超过了max_pending_time,需要被重新请求
         """
@@ -86,7 +86,7 @@ class PieceManager:
                     return request.block
         return None
 
-    def _next_ongoing(self, peer_id: bytes) -> Block | None:
+    def _next_ongoing(self, peer_id: bytes) -> Optional[Block]:
         """
         寻找peer对应的ongoing队列中,第一个可以请求的piece,将其中第一个可以请求的block加入pending_blocks
         """
@@ -107,7 +107,7 @@ class PieceManager:
             if not self.peers[peer_id][piece.index]:
                 # 如果peer没有该piece
                 continue
-            for p in self.peers.keys():
+            for p in self.peers:
                 if self.peers[p][piece.index]:
                     piece_count[piece] += 1
         rarest_piece: Piece = min(piece_count, key=lambda p: piece_count[p])
@@ -115,7 +115,7 @@ class PieceManager:
         self.ongoing_pieces.append(rarest_piece)
         return rarest_piece
 
-    def _next_missing_block(self, peer_id: bytes) -> Block | None:
+    def _next_missing_block(self, peer_id: bytes) -> Optional[Block]:
         for index, piece in enumerate(self.missing_pieces):
             if self.peers[peer_id][piece.index]:
                 piece = self.missing_pieces.pop(index)
@@ -128,7 +128,7 @@ class PieceManager:
         os.lseek(self.fd, pos, os.SEEK_SET)
         os.write(self.fd, piece.data)
 
-    def next_request(self, peer_id: bytes) -> Block | None:
+    def next_request(self, peer_id: bytes) -> Optional[Block]:
         """
         block的请求优先级如下:
             1.在请求队列中,请求超时的block,重新请求
@@ -145,7 +145,7 @@ class PieceManager:
         return block
 
     def block_received(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes):
-        logging.info(f"Received block {block_offset} for piece {piece_index} from peer {peer_id}: ")
+        logging.debug(f"Received block {block_offset} for piece {piece_index} from peer {peer_id}: ")
         for index, request in enumerate(self.pending_blocks):
             if request.block.piece == piece_index and request.block.offset == block_offset:
                 del self.pending_blocks[index]

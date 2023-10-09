@@ -7,6 +7,8 @@ import time
 from asyncio import Queue
 from typing import List
 
+import aiohttp
+
 from src.torrent.manager import PieceManager
 from src.torrent.torrent import Torrent
 from src.torrent.tracker import Tracker
@@ -53,7 +55,7 @@ class TorrentClient:
                       for _ in range(MAX_PEER_CONNECTIONS)]
 
         previous = None
-        interval = 30 * 60
+        interval = 2 * 60  # announce call 默认间隔
 
         while True:
             if self.piece_manager.finished:
@@ -65,10 +67,15 @@ class TorrentClient:
 
             current = time.time()
             if (not previous) or (previous + interval < current):
-                response = await self.tracker.connect(
-                    first=previous if previous else False,
-                    uploaded=0,
-                    downloaded=self.piece_manager.bytes_downloaded)
+                try:
+                    response = await self.tracker.connect(
+                        first=previous if previous else False,
+                        uploaded=0,
+                        downloaded=self.piece_manager.bytes_downloaded)
+                except ConnectionRefusedError:
+                    logging.info("Tracker refused connection")
+                except aiohttp.ClientConnectorError:
+                    logging.info("Tracker refused connection")
 
                 if response:
                     previous = current

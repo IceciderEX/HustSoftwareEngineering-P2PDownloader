@@ -15,36 +15,44 @@ class PeerStreamIterator:
         self.reader = reader
         self.buffer = initial if initial else b''
 
-    async def __aiter__(self):
+    def __aiter__(self):
         return self
 
     async def __anext__(self):
-        try:
-            data = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
-            if data:
-                self.buffer += data
-                message = self.parse()
-                if message:
-                    return message
-            else:
-                if self.buffer:
+        while True:
+            try:
+                data = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
+                if data:
+                    self.buffer += data
                     message = self.parse()
                     if message:
                         return message
+                else:
+                    logging.debug('No data read from stream')
+                    if self.buffer:
+                        message = self.parse()
+                        if message:
+                            return message
+                    raise StopAsyncIteration()
+            except ConnectionResetError:
+                logging.debug('Connection closed by peer')
                 raise StopAsyncIteration()
-        except ConnectionResetError:
-            logging.debug('Connection closed by peer')
-            raise StopAsyncIteration()
-        except Exception:
-            logging.exception("Error when iterating over stream!")
-            raise StopAsyncIteration()
+            except CancelledError:
+                raise StopAsyncIteration()
+            except StopAsyncIteration as e:
+                raise e
+            except Exception:
+                logging.exception('Error when iterating over stream!')
+                raise StopAsyncIteration()
+        raise StopAsyncIteration()
 
     def parse(self):
         header_length = 4
-        if len(self.buffer) == 4:
-            return KeepAlive()
+
         if len(self.buffer) > 4:
             message_length = struct.unpack('>I', self.buffer[:4])[0]
+            if message_length == 0:
+                return KeepAlive()
             if len(self.buffer) >= message_length:
                 def _consume():
                     self.buffer = self.buffer[header_length + message_length:]
@@ -53,41 +61,40 @@ class PeerStreamIterator:
                     return self.buffer[:header_length + message_length]
 
                 msg_id = struct.unpack('>b', self.buffer[4:5])[0]
-                match msg_id:
-                    case MsgId.Choke:
-                        _consume()
-                        return Choke()
-                    case MsgId.Unchoke:
-                        _consume()
-                        return UnChoke()
-                    case MsgId.Interested:
-                        _consume()
-                        return Interested()
-                    case MsgId.NotInterested:
-                        _consume()
-                        return NotInterested()
-                    case MsgId.Bitfield:
-                        data = _data()
-                        _consume()
-                        return BitField.decode(data)
-                    case MsgId.Have:
-                        data = _data()
-                        _consume()
-                        return Have.decode(data)
-                    case MsgId.Request:
-                        data = _data()
-                        _consume()
-                        return Request.decode(data)
-                    case MsgId.Piece:
-                        data = _data()
-                        _consume()
-                        return Piece.decode(data)
-                    case MsgId.Cancel:
-                        data = _data()
-                        _consume()
-                        return Cancel.decode(data)
-                    case _:
-                        logging.info("decode unknown message")
+                if msg_id == MsgId.Choke:
+                    _consume()
+                    return Choke()
+                elif msg_id == MsgId.Unchoke:
+                    _consume()
+                    return UnChoke()
+                elif msg_id == MsgId.Interested:
+                    _consume()
+                    return Interested()
+                elif msg_id == MsgId.NotInterested:
+                    _consume()
+                    return NotInterested()
+                elif msg_id == MsgId.Bitfield:
+                    data = _data()
+                    _consume()
+                    return BitField.decode(data)
+                elif msg_id == MsgId.Have:
+                    data = _data()
+                    _consume()
+                    return Have.decode(data)
+                elif msg_id == MsgId.Request:
+                    data = _data()
+                    _consume()
+                    return Request.decode(data)
+                elif msg_id == MsgId.Piece:
+                    data = _data()
+                    _consume()
+                    return Piece.decode(data)
+                elif msg_id == MsgId.Cancel:
+                    data = _data()
+                    _consume()
+                    return Cancel.decode(data)
+                else:
+                    logging.info("decode unknown message")
             else:
                 logging.debug('Not enough in buffer in order to parse')
         return None
@@ -98,8 +105,8 @@ class ProtocolError(BaseException):
 
 
 STOPPED = "stopped"
-CHOKED = "Choked"
-INTERESTED = "Interested"
+CHOKED = "choked"
+INTERESTED = "interested"
 PENDING = 'pending_request'
 
 
@@ -140,7 +147,7 @@ class Connection:
             raise ProtocolError("Handshake with invalid info_hash")
 
         self.remote_id = response.peer_id
-        logging.info("Handshake with peer was successful")
+        logging.info(f"Handshake with peer" + str(self.remote_id) + "was successful")
         return buf[HandShake.length:]
 
     async def _send_interested(self) -> None:
@@ -175,10 +182,10 @@ class Connection:
     async def _start(self):
         while STOPPED not in self.my_state:
             ip, port = await self.queue.get()
-            logging.info(f"Got assigned peer with {ip}")
+            logging.info(f"Got assigned peer with {ip}:{port}")
             try:
                 self.reader, self.writer = await asyncio.open_connection(ip, port)
-                logging.info(f"Connecting to peer {ip}")
+                logging.info(f"Connecting to peer {ip}:{port}")
                 buffer = await self._handshake()
                 self.my_state.append(CHOKED)
                 await self._send_interested()
@@ -226,6 +233,8 @@ class Connection:
                 logging.warning('Unable to connect to peer')
             except (ConnectionResetError, CancelledError):
                 logging.warning('Connection closed')
+            except OSError:
+                logging.info("Connection overtime!")
             except Exception:
                 logging.exception('An error occurred')
                 self.cancel()
