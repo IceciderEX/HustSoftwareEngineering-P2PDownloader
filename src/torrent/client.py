@@ -12,7 +12,7 @@ from src.torrent.torrent import Torrent
 from src.torrent.tracker import Tracker
 from src.torrent.connection import Connection
 
-MAX_PEER_CONNECTIONS = 1
+MAX_PEER_CONNECTIONS = 20
 
 
 class TorrentClient:
@@ -23,7 +23,6 @@ class TorrentClient:
         self.piece_manager = PieceManager(torrent)
         self.abort = False
 
-    # 将peers队列置空
     def _empty_queue(self):
         while not self.available_peers.empty():
             self.available_peers.get_nowait()

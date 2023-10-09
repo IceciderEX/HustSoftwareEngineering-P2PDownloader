@@ -26,12 +26,15 @@ class PeerStreamIterator:
                 message = self.parse()
                 if message:
                     return message
+                return None
             else:
                 if self.buffer:
                     message = self.parse()
                     if message:
                         return message
-                raise StopAsyncIteration()
+                    return None
+                # raise StopAsyncIteration()
+                return None
         except ConnectionResetError:
             logging.debug('Connection closed by peer')
             raise StopAsyncIteration()
@@ -53,41 +56,40 @@ class PeerStreamIterator:
                     return self.buffer[:header_length + message_length]
 
                 msg_id = struct.unpack('>b', self.buffer[4:5])[0]
-                match msg_id:
-                    case MsgId.Choke:
-                        _consume()
-                        return Choke()
-                    case MsgId.Unchoke:
-                        _consume()
-                        return UnChoke()
-                    case MsgId.Interested:
-                        _consume()
-                        return Interested()
-                    case MsgId.NotInterested:
-                        _consume()
-                        return NotInterested()
-                    case MsgId.Bitfield:
-                        data = _data()
-                        _consume()
-                        return BitField.decode(data)
-                    case MsgId.Have:
-                        data = _data()
-                        _consume()
-                        return Have.decode(data)
-                    case MsgId.Request:
-                        data = _data()
-                        _consume()
-                        return Request.decode(data)
-                    case MsgId.Piece:
-                        data = _data()
-                        _consume()
-                        return Piece.decode(data)
-                    case MsgId.Cancel:
-                        data = _data()
-                        _consume()
-                        return Cancel.decode(data)
-                    case _:
-                        logging.info("decode unknown message")
+                if msg_id == MsgId.Choke:
+                    _consume()
+                    return Choke()
+                elif msg_id == MsgId.Unchoke:
+                    _consume()
+                    return UnChoke()
+                elif msg_id == MsgId.Interested:
+                    _consume()
+                    return Interested()
+                elif msg_id == MsgId.NotInterested:
+                    _consume()
+                    return NotInterested()
+                elif msg_id == MsgId.Bitfield:
+                    data = _data()
+                    _consume()
+                    return BitField.decode(data)
+                elif msg_id == MsgId.Have:
+                    data = _data()
+                    _consume()
+                    return Have.decode(data)
+                elif msg_id == MsgId.Request:
+                    data = _data()
+                    _consume()
+                    return Request.decode(data)
+                elif msg_id == MsgId.Piece:
+                    data = _data()
+                    _consume()
+                    return Piece.decode(data)
+                elif msg_id == MsgId.Cancel:
+                    data = _data()
+                    _consume()
+                    return Cancel.decode(data)
+                else:
+                    logging.info("decode unknown message")
             else:
                 logging.debug('Not enough in buffer in order to parse')
         return None
@@ -185,6 +187,8 @@ class Connection:
                 self.my_state.append(INTERESTED)
                 async for message in PeerStreamIterator(self.reader, buffer):
                     if STOPPED in self.my_state:
+                        break
+                    if message is None:
                         break
                     if type(message) is BitField:
                         self.piece_manager.add_peer(self.remote_id, message.bitfield)
