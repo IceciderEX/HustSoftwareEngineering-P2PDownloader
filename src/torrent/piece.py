@@ -4,6 +4,7 @@
 
 import logging
 from hashlib import sha1
+from typing import Optional
 
 
 class Block:
@@ -43,7 +44,7 @@ class Piece:
         for block in self.blocks:
             block.status = Block.Missing
 
-    def next_request(self) -> Block | None:
+    def next_request(self) -> Optional[Block]:
         """
         :return: 返回第一个缺失的Block
         """

@@ -12,7 +12,7 @@ from src.torrent.torrent import Torrent
 from src.torrent.tracker import Tracker
 from src.torrent.connection import Connection
 
-MAX_PEER_CONNECTIONS = 40
+MAX_PEER_CONNECTIONS = 20
 
 
 class TorrentClient:
