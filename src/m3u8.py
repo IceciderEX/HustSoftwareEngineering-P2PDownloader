@@ -3,7 +3,9 @@ import requests
 import subprocess
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
-
+"""
+此文件中m3u8_url,output_dir,output_filename等变量的值为本地测试服务，后续改成用户配置
+"""
 # Define the M3U8 URL you want to download
 m3u8_url = "https://videotx-platform.cdn.huya.com/leaf/1048585/1199566795719/61787241/15469627_ebd0887ed7bb099558833e816768d860_264_720_6_ai.m3u8"
 
