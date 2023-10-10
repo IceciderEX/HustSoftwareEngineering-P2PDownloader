@@ -43,7 +43,6 @@ class PeerStreamIterator:
                 raise e
             except Exception:
                 logging.exception('Error when iterating over stream!')
-                raise StopAsyncIteration()
         raise StopAsyncIteration()
 
     def parse(self):
@@ -130,17 +129,20 @@ class Connection:
         """
         发送并解析handshake消息
         """
+        global response
         self.writer.write(HandShake(self.info_hash, self.peer_id).encode())
         await self.writer.drain()
 
         buf = b''
         tries = 1
+        response = None
         while len(buf) < HandShake.length and tries < 10:
             # 只要成功读取一个handshake就会跳出循环
             tries += 1
             buf = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
 
-        response = HandShake.decode(buf[:HandShake.length])
+            response = HandShake.decode(buf[:HandShake.length])
+
         if not response:
             raise ProtocolError("Unable to receive and parse a handshake")
         if response.info_hash != self.info_hash:
@@ -161,8 +163,8 @@ class Connection:
         if block:
             message = Request(block.piece, block.offset, block.length)
 
-            logging.debug(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
-                         f'of {block.length} bytes from peer {self.remote_id}')
+            logging.debug(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece}'
+                          f'of {block.length} bytes from peer {self.remote_id}')
             self.writer.write(message.encode())
             await self.writer.drain()
 
@@ -184,7 +186,10 @@ class Connection:
             ip, port = await self.queue.get()
             logging.info(f"Got assigned peer with {ip}:{port}")
             try:
-                self.reader, self.writer = await asyncio.open_connection(ip, port)
+                # self.reader, self.writer = await asyncio.open_connection(ip, port)
+                connection_task = asyncio.open_connection(ip, port)
+                self.reader, self.writer = await asyncio.wait_for(connection_task,
+                                                                  timeout=500)  # Adjust timeout as needed
                 logging.info(f"Connecting to peer {ip}:{port}")
                 buffer = await self._handshake()
                 self.my_state.append(CHOKED)
@@ -234,7 +239,7 @@ class Connection:
             except (ConnectionResetError, CancelledError):
                 logging.warning('Connection closed')
             except OSError:
-                logging.info("Connection overtime!")
+                logging.info("Connection overtime（信号灯超时）!")
             except Exception:
                 logging.exception('An error occurred')
                 self.cancel()

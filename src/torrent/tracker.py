@@ -19,6 +19,7 @@ from src.torrent.torrent import Torrent
 def _decode_port(port):
     """
     按照网络大端存储模式解析无符号短整型
+    Converts a 32-bit packed binary port number to int
     """
     return struct.unpack(">H", port)[0]
 
@@ -85,7 +86,7 @@ class Tracker:
         self.sock: Optional[Socket] = None
         self.use_udp = self.torrent.announce.startswith("udp")
 
-    async def connect(self, first: bool = False, downloaded: int = 0, uploaded: int = 0):
+    async def connect(self, first: bool = None, downloaded: int = 0, uploaded: int = 0):
         if self.use_udp:
             match = re.search(r'udp://([^:/]+:\d+)/', self.torrent.announce)
             if match:
@@ -135,7 +136,8 @@ class Tracker:
             params = {
                 'info_hash': self.torrent.info_hash,
                 'peer_id': self.peer_id,
-                'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
+                #'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
+                'port': 6889,
                 'uploaded': uploaded,
                 'downloaded': downloaded,
                 'left': self.torrent.length - downloaded,
@@ -155,6 +157,7 @@ class Tracker:
                 logging.info("Tracker refused connection")
             except aiohttp.ClientConnectorError:
                 logging.info("Tracker refused connection")
+
     def close(self):
         if self.use_udp:
             self.sock.close()

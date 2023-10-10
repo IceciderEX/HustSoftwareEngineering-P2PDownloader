@@ -53,7 +53,7 @@ class HandShake(Message):
         length = 49 + 19
         if len(data) != length:
             logging.error(f"HandShake Decode: data length {len(data)}")
-            raise RuntimeError("HandShake Decode receive wrong data")
+            raise RuntimeError(f"HandShake Decode receive wrong data, len:{len(data)}")
 
         unpack_data = struct.unpack('>B19s8x20s20s', data)
         return HandShake(unpack_data[2], unpack_data[3])

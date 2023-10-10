@@ -163,6 +163,7 @@ class PieceManager:
                     self.ongoing_pieces.remove(piece)
                     self.have_pieces.append(piece)
                     logging.info(
+                        f"Piece#{piece.index} download complete, "
                         f"{len(self.have_pieces)} / {self.total_pieces} pieces download "
                         f"{(len(self.have_pieces) / self.total_pieces * 100):.3f} %")
                 else:
