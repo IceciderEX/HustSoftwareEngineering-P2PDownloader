@@ -1,6 +1,3 @@
-# @author 郑卯杨
-# @date 2023/10/2
-# @description 实现了TorrentClient类
 import asyncio
 import logging
 import time
@@ -12,7 +9,17 @@ from src.torrent.torrent import Torrent
 from src.torrent.tracker import Tracker
 from src.torrent.connection import Connection
 
-MAX_PEER_CONNECTIONS = 12
+"""
+    @filename client.py
+    @author 郑卯杨
+    @date 2023/10/10
+    @version 1.0
+    
+    该模块集成了所有模块,真正地开始下载
+    封装了TorrentClient类,使用start()开始下载,stop()停止下载
+"""
+
+MAX_PEER_CONNECTIONS = 40
 
 
 class TorrentClient:
@@ -39,11 +46,9 @@ class TorrentClient:
 
     async def start(self):
         """
-        Start downloading the torrent held by this client.
+        开始下载持有的torrent文件
 
-        This results in connecting to the tracker to retrieve the list of
-        peers to communicate with. Once the torrent is fully downloaded or
-        if the download is aborted this method will complete.
+        当文件被全部下载或中止时停止
         """
         self.peers = [Connection(self.available_peers,
                                  self.tracker.torrent.info_hash,
@@ -53,7 +58,7 @@ class TorrentClient:
                       for _ in range(MAX_PEER_CONNECTIONS)]
 
         previous = None
-        interval = 2 * 60  # announce call 默认间隔
+        interval = 2 * 60  # Tracker服务器通信的默认间隔
         i = 0
         while True:
             if self.piece_manager.finished:

@@ -1,12 +1,24 @@
-# @author 郑卯杨
-# @date 2023/9/27
-# @description 封装与Peer沟通的Message
 import logging
 import struct
 import bitstring
 
+"""
+    @filename message.py
+    @author 郑卯杨
+    @date 2023/10/10
+    @version 1.0
+    
+    该模块实现了通信要用到的所有信息类
+    每一个信息类都包含:
+        类成员函数encode: 编码为bytes类型
+        静态函数decode: 解码bytes类型,并返回一个对应类
+"""
+
 
 class MsgId:
+    """
+    枚举类,定义了通信状态
+    """
     Choke = 0
     Unchoke = 1
     Interested = 2
