@@ -8,9 +8,15 @@ from src.torrent.torrent import Torrent
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s: %(message)s',
+                        datefmt='%Y/%m/%d %I:%M:%S %p')
     loop = asyncio.get_event_loop()
+<<<<<<< HEAD
     client = TorrentClient(Torrent("../file/debian-12.1.0-amd64-netinst.iso.torrent"))
+=======
+    client = TorrentClient(Torrent("file/debian-9.3.0-amd64-netinst.torrent"))
+>>>>>>> origin/zmy_torrent
     task = loop.create_task(client.start())
 
     def signal_handler(*_):

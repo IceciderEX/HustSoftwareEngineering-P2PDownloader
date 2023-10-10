@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>src.torrent.tracker &mdash; src documentation</title>
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css"/>
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css"/>
+    <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+    <![endif]-->
+
+    <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html"/>
+    <link rel="search" title="Search" href="../../../search.html"/>
+</head>
+
+<body class="wy-body-for-nav">
+<div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+        <div class="wy-side-scroll">
+            <div class="wy-side-nav-search">
+
+
+                <a href="../../../index.html" class="icon icon-home">
+                    src
+                </a>
+                <div role="search">
+                    <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+                        <input type="text" name="q" placeholder="Search docs" aria-label="Search docs"/>
+                        <input type="hidden" name="check_keywords" value="yes"/>
+                        <input type="hidden" name="area" value="default"/>
+                    </form>
+                </div>
+            </div>
+            <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+                <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../../src.html">src package</a></li>
+                </ul>
+
+            </div>
+        </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+        <nav class="wy-nav-top" aria-label="Mobile navigation menu">
+            <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+            <a href="../../../index.html">src</a>
+        </nav>
+
+        <div class="wy-nav-content">
+            <div class="rst-content">
+                <div role="navigation" aria-label="Page navigation">
+                    <ul class="wy-breadcrumbs">
+                        <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+                        <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+                        <li class="breadcrumb-item active">src.torrent.tracker</li>
+                        <li class="wy-breadcrumbs-aside">
+                        </li>
+                    </ul>
+                    <hr/>
+                </div>
+                <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+                    <div itemprop="articleBody">
+
+                        <h1>Source code for src.torrent.tracker</h1>
+                        <div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">urllib.parse</span>
+<span class="kn">import</span> <span class="nn">aiohttp</span>
+<span class="kn">import</span> <span class="nn">asyncudp</span>
+<span class="kn">from</span> <span class="nn">aiohttp</span> <span class="kn">import</span> <span class="n">ClientSession</span>
+<span class="kn">from</span> <span class="nn">asyncudp</span> <span class="kn">import</span> <span
+                                class="n">Socket</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span
+                                class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">src.torrent</span> <span class="kn">import</span> <span class="n">bencoding</span>
+<span class="kn">from</span> <span class="nn">src.torrent.torrent</span> <span class="kn">import</span> <span class="n">Torrent</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    @filename tracker.py</span>
+<span class="sd">    @author 郑卯杨</span>
+<span class="sd">    @date 2023/10/10</span>
+<span class="sd">    @version 1.0</span>
+<span class="sd">    </span>
+<span class="sd">    该模块实现了和Tracker服务器的通信,目前支持http协议和udp协议</span>
+<span class="sd">    实现了封装类Tracker,和Tracker服务器通信</span>
+<span class="sd">    实现了封装类TrackerResponse,通过peers属性访问peers的 (ip,port)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span> <span class="nf">_decode_port</span><span class="p">(</span><span class="n">port</span><span
+                                class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    按照网络大端存储模式解析无符号短整型</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span
+                                class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&gt;H&quot;</span><span
+                                class="p">,</span> <span class="n">port</span><span class="p">)[</span><span class="mi">0</span><span
+                                class="p">]</span>
+
+
+<div class="viewcode-block" id="TrackerResponse">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.tracker.TrackerResponse">[docs]</a>
+<span class="k">class</span> <span class="nc">TrackerResponse</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">response</span> <span
+        class="o">=</span> <span class="n">response</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">failure</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">):</span>
+        <span class="k">if</span> <span class="sa">b</span><span class="s1">&#39;failure reason&#39;</span> <span
+        class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">response</span><span
+        class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">response</span><span class="p">[</span><span class="sa">b</span><span class="s1">&#39;failure reason&#39;</span><span
+        class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span
+        class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">interval</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        可选参数,客户端在向跟踪器发送常规请求之间应等待的时间间隔（以秒为单位）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span
+        class="sa">b</span><span class="s1">&#39;interval&#39;</span><span class="p">,</span> <span
+        class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">complete</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        可选参数,有多少个完整的结点</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span
+        class="sa">b</span><span class="s1">&#39;complete&#39;</span><span class="p">,</span> <span
+        class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">incomplete</span><span class="p">(</span><span
+        class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span
+        class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        可选参数,有多少个不完整的结点</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span
+        class="sa">b</span><span class="s1">&#39;incomplete&#39;</span><span class="p">,</span> <span
+        class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">peers</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">)</span> <span class="o">-&gt;</span> <span class="p">[]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">         :return: 返回一个列表,列表中的每一项是peer的信息 (ip,port)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">peers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">response</span><span class="p">[</span><span class="sa">b</span><span
+        class="s1">&#39;peers&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">peers</span><span
+        class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span
+        class="p">(</span><span class="s1">&#39;Dictionary model peers are returned by tracker&#39;</span><span
+        class="p">)</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span
+        class="p">(</span><span class="s1">&#39;Binary model peers are returned by tracker&#39;</span><span
+        class="p">)</span>
+
+            <span class="n">peers</span> <span class="o">=</span> <span class="p">[</span><span
+        class="n">peers</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span
+        class="n">i</span> <span class="o">+</span> <span class="mi">6</span><span class="p">]</span> <span class="k">for</span> <span
+        class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span
+        class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">peers</span><span
+        class="p">),</span> <span class="mi">6</span><span class="p">)]</span>
+            <span class="k">return</span> <span class="p">[(</span><span class="n">socket</span><span class="o">.</span><span
+        class="n">inet_ntoa</span><span class="p">(</span><span class="n">p</span><span class="p">[:</span><span
+        class="mi">4</span><span class="p">]),</span> <span class="n">_decode_port</span><span class="p">(</span><span
+        class="n">p</span><span class="p">[</span><span class="mi">4</span><span class="p">:]))</span>
+                    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span
+        class="n">peers</span><span class="p">]</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_calculate_peer_id</span><span class="p">():</span>
+    <span class="k">return</span> <span class="s1">&#39;-PC0223-&#39;</span> <span class="o">+</span> <span class="s1">&#39;&#39;</span><span
+                                class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span
+                                class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span
+                                class="p">(</span><span class="mi">0</span><span class="p">,</span> <span
+                                class="mi">9</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span
+                                class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span
+                                class="mi">12</span><span class="p">)])</span>
+
+
+<div class="viewcode-block" id="Tracker">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.tracker.Tracker">[docs]</a>
+<span class="k">class</span> <span class="nc">Tracker</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">,</span> <span class="n">torrent</span><span class="p">:</span> <span class="n">Torrent</span><span
+        class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param torrent: Torrent类的实例</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">torrent</span> <span
+        class="o">=</span> <span class="n">torrent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span> <span
+        class="o">=</span> <span class="n">_calculate_peer_id</span><span class="p">()</span>  <span class="c1"># urlen编码的 20 字节字符串</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">http_client</span><span
+        class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span
+        class="n">ClientSession</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="p">:</span> <span
+        class="n">Optional</span><span class="p">[</span><span class="n">Socket</span><span class="p">]</span> <span
+        class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_udp</span> <span
+        class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">torrent</span><span
+        class="o">.</span><span class="n">announce</span><span class="o">.</span><span class="n">startswith</span><span
+        class="p">(</span><span class="s2">&quot;udp&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Tracker.connect">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.tracker.Tracker.connect">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span
+        class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="p">:</span> <span
+        class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span
+        class="n">downloaded</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span
+        class="mi">0</span><span class="p">,</span> <span class="n">uploaded</span><span class="p">:</span> <span
+        class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span
+        class="o">-&gt;</span> <span class="n">TrackerResponse</span><span class="p">:</span>
+<span class="w">        </span><span
+        class="sd">&quot;&quot;&quot;根据announce的类型来决定是使用http协议还是udp协议</span>
+
+<span class="sd">        :param first: 是否是第一次下载</span>
+<span class="sd">        :param downloaded: 已经下载的字节数</span>
+<span class="sd">        :param uploaded:  上传的字节数</span>
+<span class="sd">        :return: TrackerResponse: 对通信结果的封装</span>
+<span class="sd">        :raise: ConnectionError: Unable to connect to tracker</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">use_udp</span><span class="p">:</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span
+        class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;udp://([^:/]+:\d+)/&#39;</span><span
+        class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">torrent</span><span
+        class="o">.</span><span class="n">announce</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                <span class="n">tracker_address</span> <span class="o">=</span> <span class="n">match</span><span
+        class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span
+        class="p">)</span>
+                <span class="n">remote_ip</span><span class="p">,</span> <span class="n">remote_port</span> <span
+        class="o">=</span> <span class="n">tracker_address</span><span class="o">.</span><span
+        class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+                <span class="n">remote_port</span> <span class="o">=</span> <span class="nb">int</span><span
+        class="p">(</span><span class="n">remote_port</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">remote_ip</span><span
+        class="p">,</span> <span class="n">remote_port</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span
+        class="s1">&#39;Unable to connect to tracker&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">sock</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span
+        class="k">await</span> <span class="n">asyncudp</span><span class="o">.</span><span
+        class="n">create_socket</span><span class="p">(</span><span class="n">remote_addr</span><span class="o">=</span><span
+        class="p">(</span><span class="n">remote_ip</span><span class="p">,</span> <span
+        class="n">remote_port</span><span class="p">))</span>
+            <span class="n">connect_request</span> <span class="o">=</span> <span class="n">struct</span><span
+        class="o">.</span><span class="n">pack</span><span class="p">(</span><span
+        class="s1">&#39;&gt;QII&#39;</span><span class="p">,</span> <span class="mh">0x41727101980</span><span
+        class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">99</span><span
+        class="p">)</span>
+            <span class="c1"># print(&quot;send connect request&quot;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span
+        class="n">sendto</span><span class="p">(</span><span class="n">connect_request</span><span class="p">)</span>
+            <span class="n">datagram</span><span class="p">,</span> <span class="n">remote_addr</span> <span
+        class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">sock</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">()</span>
+            <span class="n">action</span><span class="p">,</span> <span class="n">transaction_id</span><span
+        class="p">,</span> <span class="n">connection_id</span> <span class="o">=</span> <span
+        class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span
+        class="s1">&#39;&gt;IIQ&#39;</span><span class="p">,</span> <span class="n">datagram</span><span
+        class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span> <span
+        class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span
+        class="n">transaction_id</span> <span class="o">==</span> <span class="mi">99</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span
+        class="s1">&#39;Unable to connect to tracker&#39;</span><span class="p">)</span>
+            <span class="n">announce_request</span> <span class="o">=</span> <span class="n">struct</span><span
+        class="o">.</span><span class="n">pack</span><span class="p">(</span>
+                <span class="s1">&#39;&gt;QII20s20sQQQIIIiH&#39;</span><span class="p">,</span>
+                <span class="n">connection_id</span><span class="p">,</span>  <span class="c1"># Connection ID</span>
+                <span class="mi">1</span><span class="p">,</span>  <span class="c1"># Action (Announce请求)</span>
+                <span class="mi">99</span><span class="p">,</span>  <span class="c1"># Transaction ID</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">torrent</span><span
+        class="o">.</span><span class="n">info_hash</span><span class="p">,</span>  <span class="c1"># Info hash</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span><span
+        class="o">.</span><span class="n">encode</span><span class="p">(</span><span
+        class="s1">&#39;utf-8&#39;</span><span class="p">),</span>  <span class="c1"># Peer ID</span>
+                <span class="mi">0</span><span class="p">,</span>  <span class="c1"># Downloaded</span>
+                <span class="mi">0</span><span class="p">,</span>  <span class="c1"># Left</span>
+                <span class="mi">0</span><span class="p">,</span>  <span class="c1"># Uploaded</span>
+                <span class="mi">1</span> <span class="k">if</span> <span class="n">first</span> <span
+        class="k">else</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># Event (0表示无事件,1 started)</span>
+                <span class="mi">0</span><span class="p">,</span>  <span class="c1"># IP address (0表示默认)</span>
+                <span class="mi">0</span><span class="p">,</span>  <span class="c1"># key</span>
+                <span class="o">-</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># num want -1 default</span>
+                <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span
+        class="p">(</span><span class="mi">1023</span><span class="p">,</span> <span class="mi">8888</span><span
+        class="p">)</span>  <span class="c1"># Port</span>
+            <span class="p">)</span>
+            <span class="c1"># print(&quot;announce request&quot;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span
+        class="n">sendto</span><span class="p">(</span><span class="n">announce_request</span><span class="p">)</span>
+            <span class="n">datagram</span><span class="p">,</span> <span class="n">remote_addr</span> <span
+        class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">sock</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">()</span>
+            <span class="c1"># print(len(datagram))</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">action</span><span class="p">,</span> <span class="n">transaction_id</span><span
+        class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">leechers</span><span
+        class="p">,</span> <span class="n">seeders</span> <span class="o">=</span> <span class="n">struct</span><span
+        class="o">.</span><span class="n">unpack</span><span class="p">(</span><span
+        class="s1">&#39;&gt;IIIII&#39;</span><span class="p">,</span> <span class="n">datagram</span><span
+        class="p">[:</span><span class="mi">20</span><span class="p">])</span>
+                <span class="c1"># print(f&quot;{action=},{transaction_id=},{interval=},{leechers=},{seeders=}&quot;)</span>
+                <span class="n">dict_data</span> <span class="o">=</span> <span class="p">{</span><span
+        class="sa">b</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span
+        class="n">action</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;transaction_id&quot;</span><span
+        class="p">:</span> <span class="n">transaction_id</span><span class="p">,</span> <span class="sa">b</span><span
+        class="s2">&quot;interval&quot;</span><span class="p">:</span> <span class="n">interval</span><span
+        class="p">,</span>
+                             <span class="sa">b</span><span class="s2">&quot;leechers&quot;</span><span
+        class="p">:</span> <span class="n">leechers</span><span class="p">,</span>
+                             <span class="sa">b</span><span class="s2">&quot;seeders&quot;</span><span
+        class="p">:</span> <span class="n">seeders</span><span class="p">,</span> <span class="sa">b</span><span
+        class="s2">&quot;peers&quot;</span><span class="p">:</span> <span class="n">datagram</span><span
+        class="p">[</span><span class="mi">20</span><span class="p">:]}</span>
+                <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span
+        class="n">datagram</span><span class="p">[</span><span class="mi">20</span><span class="p">:]))</span>
+                <span class="k">return</span> <span class="n">TrackerResponse</span><span class="p">(</span><span
+        class="n">dict_data</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span
+        class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span
+        class="s1">&#39;Unable to connect to tracker&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">http_client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">http_client</span> <span
+        class="o">=</span> <span class="n">aiohttp</span><span class="o">.</span><span
+        class="n">ClientSession</span><span class="p">()</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;info_hash&#39;</span><span class="p">:</span> <span class="bp">self</span><span
+        class="o">.</span><span class="n">torrent</span><span class="o">.</span><span class="n">info_hash</span><span
+        class="p">,</span>
+                <span class="s1">&#39;peer_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span
+        class="o">.</span><span class="n">peer_id</span><span class="p">,</span>
+                <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="p">[</span><span
+        class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span
+        class="nb">range</span><span class="p">(</span><span class="mi">6881</span><span class="p">,</span> <span
+        class="mi">6890</span><span class="p">)][</span><span class="n">random</span><span class="o">.</span><span
+        class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span
+        class="mi">8</span><span class="p">)],</span>
+                <span class="s1">&#39;uploaded&#39;</span><span class="p">:</span> <span class="n">uploaded</span><span
+        class="p">,</span>
+                <span class="s1">&#39;downloaded&#39;</span><span class="p">:</span> <span
+        class="n">downloaded</span><span class="p">,</span>
+                <span class="s1">&#39;left&#39;</span><span class="p">:</span> <span class="bp">self</span><span
+        class="o">.</span><span class="n">torrent</span><span class="o">.</span><span class="n">length</span> <span
+        class="o">-</span> <span class="n">downloaded</span><span class="p">,</span>
+                <span class="s1">&#39;compact&#39;</span><span class="p">:</span> <span class="mi">1</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">first</span><span class="p">:</span>
+                <span class="n">params</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span
+        class="p">]</span> <span class="o">=</span> <span class="s1">&#39;started&#39;</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="bp">self</span><span
+        class="o">.</span><span class="n">torrent</span><span class="o">.</span><span class="n">announce</span> <span
+        class="o">+</span> <span class="s2">&quot;?&quot;</span> <span class="o">+</span> <span
+        class="n">urllib</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span
+        class="n">urlencode</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span
+        class="p">(</span><span class="s1">&#39;Connecting to tracker at: &#39;</span> <span class="o">+</span> <span
+        class="n">url</span><span class="p">)</span>
+            <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span
+        class="o">.</span><span class="n">http_client</span><span class="o">.</span><span class="n">get</span><span
+        class="p">(</span><span class="n">url</span><span class="p">)</span> <span class="k">as</span> <span class="n">resp</span><span
+        class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">resp</span><span
+        class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="mi">200</span><span
+        class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span
+        class="s1">&#39;Unable to connect to tracker&#39;</span><span class="p">)</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span
+        class="n">resp</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>  <span
+        class="c1"># bencoded dictionary</span>
+                <span class="k">return</span> <span class="n">TrackerResponse</span><span class="p">(</span><span
+        class="n">bencoding</span><span class="o">.</span><span class="n">Decode</span><span class="p">(</span><span
+        class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span
+        class="p">())</span></div>
+
+
+<div class="viewcode-block" id="Tracker.close">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.tracker.Tracker.close">[docs]</a>
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        关闭掉异步资源</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">use_udp</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span
+        class="n">close</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">http_client</span><span
+        class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+</div>
+
+</pre>
+                        </div>
+
+                    </div>
+                </div>
+                <footer>
+
+                    <hr/>
+
+                    <div role="contentinfo">
+                        <p>&#169; Copyright 2023, 郑卯杨.</p>
+                    </div>
+
+                    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+                    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+                    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+                </footer>
+            </div>
+        </div>
+    </section>
+</div>
+<script>
+    jQuery(function () {
+        SphinxRtdTheme.Navigation.enable(true);
+    });
+</script>
+
+</body>
+</html>

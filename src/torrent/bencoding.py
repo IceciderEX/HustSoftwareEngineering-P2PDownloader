@@ -1,10 +1,17 @@
-# @author 郑卯杨
-# @date 2023/9/24
-# @description 实现解码器和译码器
 from collections import OrderedDict
 from typing import Union
 
-# Tokens
+"""
+    @filename bencoding.py
+    @author 郑卯杨
+    @date 2023/10/10
+    @version 1.0
+    
+    该模块实现了bencoding格式的编码和解码
+    包含Decode解码器和Encode编码器
+"""
+
+# Tokens 用来分词的标志
 
 TOKEN_INTEGER = b'i'
 
@@ -19,17 +26,22 @@ TOKEN_END = b'e'
 
 class Decode:
     """
-        解码 bencode 格式的二进制数据
+    解码 bencode 格式的二进制数据
     """
 
     def __init__(self, data: bytes):
+        """
+        :param data: bencoding编码格式的二进制字符流
+        """
         if not isinstance(data, bytes):
             raise TypeError("Argument 'data' must be of type bytes")
         self._data = data
         self._index = 0
 
     def decode(self):
-
+        """
+        :return: 返回解码后的数据，可能是 int str list dict
+        """
         token = self._peek()
         if token is None:
             raise EOFError("Unexpected end of file")
@@ -50,8 +62,8 @@ class Decode:
             raise RuntimeError(f"Invalid token read at {self._index}")
 
     def _peek(self) -> Union[bytes, None]:
-        """
-        返回当前位置的第一个字符
+        """返回当前位置的第一个字符
+
         :return 读完了就返回None,否则返回bytes
         """
         if len(self._data) > self._index:
@@ -59,9 +71,17 @@ class Decode:
         return None
 
     def _consume(self) -> None:
+        """
+        将当前index+1
+        """
         self._index += 1
 
     def _read_until(self, token: bytes) -> bytes:
+        """
+        :param token: 分词
+        :return: [index:index(token)]之间的内容 ,并将 index = index(token)+1
+        :raise ValueError: 找不到对应的 Token
+        """
         try:
             occurence = self._data.index(token, self._index)
             result = self._data[self._index:occurence]
@@ -71,6 +91,11 @@ class Decode:
             raise RuntimeError("Unable to find token {0}".format(str(token)))
 
     def _read(self, length: int) -> bytes:
+        """
+        :param length: 读取的字节流长度
+        :return: 返回[index:index+length] 并将index+=length
+        :raise: IndexError: index out of bound
+        """
         if self._index + length > len(self._data):
             raise IndexError(f"Cannot read {length} bytes from current position {self._index}")
         result = self._data[self._index:self._index + length]
@@ -107,14 +132,21 @@ class Encode:
     支持的python类型:
     int
     str
+    bytes
     list
     dict or ordered_dict
     """
 
     def __init__(self, data):
+        """
+        :param data: int | str | bytes | List | Dict
+        """
         self._data = data
 
     def encode(self) -> bytes:
+        """
+        :return: 返回编码后的二进制数据
+        """
         return self._encode_next(self._data)
 
     def _encode_next(self, data):
