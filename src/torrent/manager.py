@@ -46,9 +46,8 @@ class PieceManager:
         self.missing_pieces: List[Piece] = self._init_pieces()
 
     def _init_pieces(self) -> List[Piece]:
-        """
-        使用torrent数据初始化每一个Piece和其包含的Block
-        只有最后一个piece的最后一个block可能不是标准大小
+        """使用torrent数据初始化每一个Piece和其包含的Block,只有最后一个piece的最后一个block可能不是标准大小
+
         :return: List[Piece]
         """
         pieces = []
@@ -98,8 +97,8 @@ class PieceManager:
         self.peers[peer_id] = bitfield
 
     def update_peer(self, peer_id: bytes, index: int) -> None:
-        """
-        将Peer拥有的第index个piece标识为1
+        """将Peer拥有的第index个piece标识为1
+
         :param peer_id: 标识 Peer
         :param index: Piece的序号
         """
@@ -107,8 +106,8 @@ class PieceManager:
             self.peers[peer_id][index] = 1
 
     def remove_peer(self, peer_id: bytes) -> None:
-        """
-        移除Peer
+        """移除Peer
+
         :param peer_id: 标识 Peer
         """
         if peer_id in self.peers:
@@ -167,8 +166,8 @@ class PieceManager:
         return None
 
     def _write(self, piece) -> None:
-        """
-        将一个Piece对应的全部数据写到文件
+        """将一个Piece对应的全部数据写到文件
+
         :param piece: Piece
         """
         pos = piece.index * self.torrent.piece_length
@@ -177,10 +176,12 @@ class PieceManager:
 
     def next_request(self, peer_id: bytes) -> Optional[Block]:
         """
+
         block的请求优先级如下:
-            1.在请求队列中,请求超时的block,重新请求
-            2.请求ongoing队列中的piece缺少的block
-            3.将缺失的piece加入ongoing队列,并请求其缺少的block
+        1.在请求队列中,请求超时的block,重新请求
+        2.请求ongoing队列中的piece缺少的block
+        3.将缺失的piece加入ongoing队列,并请求其缺少的block
+
         :return: 符合条件的Block 或 None
         """
 
@@ -196,8 +197,8 @@ class PieceManager:
         return block
 
     def block_received(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes) -> None:
-        """
-        接受Block数据,如果一个Piece的全部数据都被接受,写回到文件
+        """接受Block数据,如果一个Piece的全部数据都被接受,写回到文件
+
         :param peer_id: Peer 标识
         :param piece_index: piece在torrent文件的index
         :param block_offset: block在piece中的偏移量

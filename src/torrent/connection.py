@@ -157,8 +157,8 @@ class Connection:
         self.future = asyncio.ensure_future(self._start())  # 协程任务
 
     async def _handshake(self) -> bytes:
-        """
-        发送并解析handshake消息
+        """发送并解析handshake消息
+
         :return: data[HandShake.length:]
         :raise: ProtocolError: invalid handshake
         """
@@ -230,8 +230,8 @@ class Connection:
         self.queue.task_done()
 
     async def _start(self):
-        """
-        实现和Peer的通信,交流,数据传输,数据解析
+        """实现和Peer的通信,交流,数据传输,数据解析
+
         :raise: (ConnectionRefusedError, TimeoutError):Unable to connect to peer
         :raise: (ConnectionResetError, CancelledError):Connection closed
         :raise: RuntimeError:A runtime error occured

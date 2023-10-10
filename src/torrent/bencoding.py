@@ -62,8 +62,8 @@ class Decode:
             raise RuntimeError(f"Invalid token read at {self._index}")
 
     def _peek(self) -> Union[bytes, None]:
-        """
-        返回当前位置的第一个字符
+        """返回当前位置的第一个字符
+
         :return 读完了就返回None,否则返回bytes
         """
         if len(self._data) > self._index:

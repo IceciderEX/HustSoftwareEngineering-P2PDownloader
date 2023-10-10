@@ -69,8 +69,8 @@ class Piece:
         return None
 
     def block_received(self, offset: int, data: bytes):
-        """
-        接受对应的Block数据
+        """接受对应的Block数据
+
         :param offset: Block在Piece中的偏移量
         :param data: 接受到的Block的数据
         """

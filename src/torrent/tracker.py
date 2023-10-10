@@ -95,8 +95,8 @@ class Tracker:
         self.use_udp = self.torrent.announce.startswith("udp")
 
     async def connect(self, first: bool = False, downloaded: int = 0, uploaded: int = 0) -> TrackerResponse:
-        """
-        根据announce的类型来决定是使用http协议还是udp协议
+        """根据announce的类型来决定是使用http协议还是udp协议
+
         :param first: 是否是第一次下载
         :param downloaded: 已经下载的字节数
         :param uploaded:  上传的字节数
