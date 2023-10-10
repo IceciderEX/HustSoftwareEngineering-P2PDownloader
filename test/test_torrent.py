@@ -9,7 +9,7 @@ from src.torrent.torrent import Torrent
 
 class TestTorrent(unittest.TestCase):
     def test_parser(self):
-        filepath = '../file/debian-12.1.0-amd64-netinst.iso.torrent'
+        filepath = 'file/debian-12.1.0-amd64-netinst.iso.torrent'
         torrent_file = Torrent(filepath)
         self.assertEqual(torrent_file.announce, "http://bttracker.debian.org:6969/announce")
         self.assertEqual(torrent_file.length, 657457152)

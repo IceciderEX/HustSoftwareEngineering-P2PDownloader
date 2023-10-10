@@ -12,7 +12,7 @@ def main():
                         format='%(asctime)s - %(levelname)s: %(message)s',
                         datefmt='%Y/%m/%d %I:%M:%S %p')
     loop = asyncio.get_event_loop()
-    client = TorrentClient(Torrent("../file/debian-9.3.0-amd64-netinst.torrent"))
+    client = TorrentClient(Torrent("file/debian-9.3.0-amd64-netinst.torrent"))
     task = loop.create_task(client.start())
 
     def signal_handler(*_):
