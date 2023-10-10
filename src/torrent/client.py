@@ -17,6 +17,7 @@ from src.torrent.connection import Connection
     
     该模块集成了所有模块,真正地开始下载
     封装了TorrentClient类,使用start()开始下载,stop()停止下载
+    做图形化界面时start()是开始接口，stop()为取消接口
 """
 
 MAX_PEER_CONNECTIONS = 40

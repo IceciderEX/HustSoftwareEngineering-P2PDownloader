@@ -229,3 +229,9 @@ class PieceManager:
                     piece.reset()
         else:
             logging.warning("Trying to update piece that is not ongoing")
+
+    def download_progress(self):
+        """
+            下载速率接口
+        """
+        return len(self.have_pieces) / (self.total_pieces * 100)
