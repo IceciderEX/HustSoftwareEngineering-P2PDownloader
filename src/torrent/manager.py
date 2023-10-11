@@ -233,5 +233,13 @@ class PieceManager:
     def download_progress(self):
         """
             下载速率接口
+        :return:下载速率
         """
         return len(self.have_pieces) / (self.total_pieces * 100)
+
+    def download_place(self, path):
+        """
+            指定下载位置接口
+        :return: 无
+        """
+        self.fd = os.open(path, os.O_RDWR | os.O_CREAT)
