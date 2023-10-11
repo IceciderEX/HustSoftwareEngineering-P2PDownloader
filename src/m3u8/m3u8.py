@@ -2,7 +2,13 @@
 import os
 import requests
 import subprocess
+import threading
+import argparse
+import concurrent.futures
+import logging
 from urllib.parse import urljoin
+
+logging.basicConfig(level=logging.INFO)
 
 # Function to download the M3U8 file
 def download_m3u8(url):
@@ -19,63 +25,71 @@ def parse_m3u8(m3u8_content):
     segment_urls = [urljoin(m3u8_url, line.strip()) for line in lines if line and not line.startswith("#")]
     return segment_urls
 
+def download_segment(segment_url, output_dir, index):
+    try:
+        response = requests.get(segment_url, stream=True)
+        if response.status_code == 200:
+            segment_filename = os.path.join(output_dir, f"segment_{index:04d}.ts")
+            with open(segment_filename, "wb") as f:
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        f.write(chunk)
+                logging.info(f"Downloaded segment_{index:04d}.ts")
+        else:
+            logging.error(f"Failed to download segment_{index:04d}.ts")
+    except Exception as e:
+        logging.error(f"An error occurred while downloading segment_{index:04d}.ts: {str(e)}")
 
-# Function to download M3U8 segments and save them to the output directory
+# Function to download all segments
 def download_segments(segment_urls, output_dir):
     os.makedirs(output_dir, exist_ok=True)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(download_segment, url, output_dir, i): url for i, url in enumerate(segment_urls)}
+        for future in concurrent.futures.as_completed(futures):
+            url = futures[future]
+            try:
+                future.result()
+            except Exception as e:
+                logging.error(f"Downloading of {url} generated an exception: {str(e)}")
 
-    for i, segment_url in enumerate(segment_urls):
-        response = requests.get(segment_url)
-        if response.status_code == 200:
-            segment_filename = os.path.join(output_dir, f"segment_%04d.ts" % i)
-            with open(segment_filename, "wb") as f:
-                f.write(response.content)
-            print(f"Downloaded segment_%04d.ts" % i)
-        else:
-            print(f"Failed to download segment_%04d.ts" % i)
-
-
-# Function to merge downloaded segments into a single video file using FFmpeg
+# Function to merge segments
 def merge_segments(output_dir, output_filename):
-    ts_files = []
-    for filename in os.listdir(output_dir):
-        if filename.endswith(".ts"):
-            ts_files.append(os.path.join(output_dir, filename))
+    ts_files = [os.path.join(output_dir, filename) for filename in os.listdir(output_dir) if filename.endswith(".ts")]
     try:
-        # 构建ffmpeg命令，将多个.ts文件合并成一个.mp4文件
-        cmd = ['ffmpeg', '-i', 'concat:' + '|'.join(ts_files), '-c', "copy", output_filename]
-
-        # 运行ffmpeg命令
+        cmd = ['ffmpeg', '-i', 'concat:' + '|'.join(ts_files), '-c', 'copy', output_filename]
         subprocess.run(cmd, check=True)
-        print(f'Successfully merged {len(ts_files)} .ts files into {output_filename}')
+        logging.info(f'Successfully merged {len(ts_files)} .ts files into {output_filename}')
     except subprocess.CalledProcessError as e:
-        print(f'Error merging files: {e}')
+        logging.error(f'Error merging files: {e}')
     except Exception as e:
-        print(f'An error occurred: {e}')
+        logging.error(f'An error occurred: {e}')
     clean_up(ts_files)
-    print(".ts files were cleaned up!")
-    print(f"Video saved as {output_filename}")
+    logging.info(".ts files were cleaned up!")
+    logging.info(f"Video saved as {output_filename}")
+
 
 def clean_up(ts_files):
     try:
         for ts_file in ts_files:
             os.remove(ts_file)
-            print(f'Deleted {ts_file}')
-    except subprocess.CalledProcessError as e:
-        print(f'Error merging files: {e}')
+            logging.info(f'Deleted {ts_file}')
     except Exception as e:
-        print(f'An error occurred: {e}')
+        logging.error(f'An error occurred while cleaning up files: {e}')
+
 if __name__ == "__main__":
     # Define the M3U8 URL you want to download
     m3u8_url = input("input the M3U8 URL you want to download: ")
 
     # Define the output directory and filename for the final video
-    output_dir = input("input the directory for the video to download: ") #如D:\University\early_3rd\m3u8download
-    output_filename = input("input the filename for the video you want to download: ") #如D:\University\early_3rd\m3u8download\video.mp4
+    output_dir = input("input the directory for the video to download: ") 
+    filename = input("input the filename for the video you want to download: ")
+    output_filename=output_dir+"\\"+filename
+
     try:
-        m3u8_content = download_m3u8(m3u8_url)
-        segment_urls = parse_m3u8(m3u8_content)
+        m3u8_content = requests.get(m3u8_url).text
+        segment_urls = [urljoin(m3u8_url, line.strip()) for line in m3u8_content.split('\n') if
+                        line and not line.startswith("#")]
         download_segments(segment_urls, output_dir)
         merge_segments(output_dir, output_filename)
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
+        logging.error(f"An error occurred: {str(e)}")
