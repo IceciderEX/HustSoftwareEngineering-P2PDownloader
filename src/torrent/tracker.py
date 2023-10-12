@@ -17,7 +17,7 @@ from src.torrent.torrent import Torrent
     @author 郑卯杨
     @date 2023/10/10
     @version 1.0
-    
+
     该模块实现了和Tracker服务器的通信,目前支持http协议和udp协议
     实现了封装类Tracker,和Tracker服务器通信
     实现了封装类TrackerResponse,通过peers属性访问peers的 (ip,port)
@@ -27,7 +27,6 @@ from src.torrent.torrent import Torrent
 def _decode_port(port):
     """
     按照网络大端存储模式解析无符号短整型
-    Converts a 32-bit packed binary port number to int
     """
     return struct.unpack(">H", port)[0]
 
@@ -95,9 +94,6 @@ class Tracker:
         self.sock: Optional[Socket] = None
         self.use_udp = self.torrent.announce.startswith("udp")
 
-<<<<<<< HEAD
-    async def connect(self, first: bool = None, downloaded: int = 0, uploaded: int = 0):
-=======
     async def connect(self, first: bool = False, downloaded: int = 0, uploaded: int = 0) -> TrackerResponse:
         """根据announce的类型来决定是使用http协议还是udp协议
 
@@ -107,7 +103,6 @@ class Tracker:
         :return: TrackerResponse: 对通信结果的封装
         :raise: ConnectionError: Unable to connect to tracker
         """
->>>>>>> origin/zmy_torrent
         if self.use_udp:
             match = re.search(r'udp://([^:/]+:\d+)/', self.torrent.announce)
             if match:
@@ -116,13 +111,14 @@ class Tracker:
                 remote_port = int(remote_port)
                 print(remote_ip, remote_port)
             else:
-                raise ConnectionError('Unable to connect to tracker')
+                raise ConnectionError('Unable to connect to udp tracker')
             if self.sock is None:
                 self.sock = await asyncudp.create_socket(remote_addr=(remote_ip, remote_port))
             connect_request = struct.pack('>QII', 0x41727101980, 0, 99)
-            # print("send connect request")
+            print("send udp connect request")
             self.sock.sendto(connect_request)
             datagram, remote_addr = await self.sock.recvfrom()
+            print(datagram)
             action, transaction_id, connection_id = struct.unpack('>IIQ', datagram)
             if not action == 0 and not transaction_id == 99:
                 raise ConnectionError('Unable to connect to tracker')
@@ -162,8 +158,8 @@ class Tracker:
             params = {
                 'info_hash': self.torrent.info_hash,
                 'peer_id': self.peer_id,
-                #'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
-                'port': 6889,
+                # 'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
+                'port': 5552,
                 'uploaded': uploaded,
                 'downloaded': downloaded,
                 'left': self.torrent.length - downloaded,
@@ -173,16 +169,11 @@ class Tracker:
                 params['event'] = 'started'
             url = self.torrent.announce + "?" + urllib.parse.urlencode(params)
             logging.info('Connecting to tracker at: ' + url)
-            try:
-                async with self.http_client.get(url) as resp:
-                    if not resp.status == 200:
-                        raise ConnectionError('Unable to connect to tracker')
-                    data = await resp.read()  # bencoded dictionary
-                    return TrackerResponse(bencoding.Decode(data).decode())
-            except ConnectionRefusedError:
-                logging.info("Tracker refused connection")
-            except aiohttp.ClientConnectorError:
-                logging.info("Tracker refused connection")
+            async with self.http_client.get(url) as resp:
+                if not resp.status == 200:
+                    raise ConnectionError('Unable to connect to tracker')
+                data = await resp.read()  # bencoded dictionary
+                return TrackerResponse(bencoding.Decode(data).decode())
 
     def close(self) -> None:
         """

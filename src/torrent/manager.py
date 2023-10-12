@@ -44,6 +44,7 @@ class PieceManager:
         self.total_pieces = len(torrent.pieces)
         self.fd = os.open(self.torrent.name, os.O_RDWR | os.O_CREAT)  # 在当前目录下创建下载的文件
         self.missing_pieces: List[Piece] = self._init_pieces()
+        self.block_download_bytes = 0
 
     def _init_pieces(self) -> List[Piece]:
         """使用torrent数据初始化每一个Piece和其包含的Block,只有最后一个piece的最后一个block可能不是标准大小
@@ -122,9 +123,7 @@ class PieceManager:
             if self.peers[peer_id][request.block.piece]:
                 if request.added + self.max_pending_time < current:
                     logging.info(f"Re-requesting block {request.block.offset} for piece {request.block.piece}")
-
-                    request._replace(added=current)
-                    # request.added = current
+                    request.added = current
                     return request.block
         return None
 
@@ -206,6 +205,7 @@ class PieceManager:
         :param block_offset: block在piece中的偏移量
         :param data: 请求的block数据
         """
+        self.block_download_bytes += 16384
 
         logging.debug(f"Received block {block_offset} for piece {piece_index} from peer {peer_id}: ")
         for index, request in enumerate(self.pending_blocks):
@@ -223,7 +223,6 @@ class PieceManager:
                     self.ongoing_pieces.remove(piece)
                     self.have_pieces.append(piece)
                     logging.info(
-                        f"Piece#{piece.index} download complete, "
                         f"{len(self.have_pieces)} / {self.total_pieces} pieces download "
                         f"{(len(self.have_pieces) / self.total_pieces * 100):.3f} %")
                 else:
