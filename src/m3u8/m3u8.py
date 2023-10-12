@@ -2,9 +2,8 @@
 import os
 import requests
 import subprocess
-import threading
-import argparse
 import concurrent.futures
+import time
 import logging
 from urllib.parse import urljoin
 
@@ -43,12 +42,27 @@ def download_segment(segment_url, output_dir, index):
 # Function to download all segments
 def download_segments(segment_urls, output_dir):
     os.makedirs(output_dir, exist_ok=True)
+    total_segments = len(segment_urls)
+    downloaded_segments = 0
+    total_bytes = 0
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         futures = {executor.submit(download_segment, url, output_dir, i): url for i, url in enumerate(segment_urls)}
         for future in concurrent.futures.as_completed(futures):
             url = futures[future]
             try:
                 future.result()
+                downloaded_segments += 1
+                segment_size = os.path.getsize(os.path.join(output_dir, f"segment_{downloaded_segments - 1:04d}.ts"))
+                total_bytes += segment_size
+
+                # Calculate progress and speed
+                progress = downloaded_segments / total_segments * 100
+                average_speed = total_bytes / (1024 * (time.time() - start_time))  # Average speed in KB/s
+
+                logging.info(
+                    f"Downloaded {downloaded_segments}/{total_segments} segments - {progress:.2f}% complete ({average_speed:.2f} KB/s)")
+
             except Exception as e:
                 logging.error(f"Downloading of {url} generated an exception: {str(e)}")
 
@@ -89,6 +103,7 @@ if __name__ == "__main__":
         m3u8_content = requests.get(m3u8_url).text
         segment_urls = [urljoin(m3u8_url, line.strip()) for line in m3u8_content.split('\n') if
                         line and not line.startswith("#")]
+        start_time = time.time()
         download_segments(segment_urls, output_dir)
         merge_segments(output_dir, output_filename)
     except Exception as e:
