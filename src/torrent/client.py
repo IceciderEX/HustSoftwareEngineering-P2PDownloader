@@ -113,8 +113,13 @@ class TorrentClient:
         if downloaded_time != 0:
             download_speed = downloaded_bytes / downloaded_time
         show_speed = download_speed / 1024
-        logging.info(f'Download speed: {show_speed:.2f} KB/s')
-        return show_speed
+        if show_speed >= 1024:
+            show_speed = show_speed / 1024
+            logging.info(f'Download speed: {show_speed:.2f} MB/s')
+            return show_speed
+        else:
+            logging.info(f'Download speed: {show_speed:.2f} KB/s')
+            return show_speed
 
     async def return_download_time(self):
         while not self.piece_manager.finished:
