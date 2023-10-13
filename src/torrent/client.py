@@ -16,7 +16,7 @@ from src.torrent.connection import Connection
     @version 1.0
     
     该模块集成了所有模块,真正地开始下载
-    封装了TorrentClient类,使用start()开始下载,stop()停止下载
+    封装了TorrentClient类,使用start()开始下载,stop()取消下载，pause()暂停下载，resume()继续下载
     做图形化界面时start()是开始接口，stop()为取消接口
 """
 
@@ -68,7 +68,6 @@ class TorrentClient:
             if self.abort:
                 logging.info('Aborting download...')
                 break
-
             current = round(time.time())
             if (not previous) or (previous + interval < current) or self.available_peers.empty():
                 logging.info(f"向tracker服务器发送第{i}次请求")
