@@ -7,17 +7,17 @@ from src.torrent.client import TorrentClient
 from src.torrent.torrent import Torrent
 
 
-def download(TorrentFile):
+def download(torrentfile: str):
     """
     下载开始接口，在实现图形化界面时可多次调用，建议设置过最大同时下载数为3
-    :param TorrentFile: .Torrent文件路径
+    :param torrentfile: .Torrent文件路径
     :return:
     """
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s: %(message)s',
                         datefmt='%Y/%m/%d %I:%M:%S %p')
     loop = asyncio.get_event_loop()
-    client = TorrentClient(Torrent(TorrentFile))
+    client = TorrentClient(Torrent(torrentfile))
     task = loop.create_task(client.start())
 
     def signal_handler(*_):
