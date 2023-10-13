@@ -29,6 +29,7 @@ class TorrentClient:
         self.peers: List[Connection] = []
         self.piece_manager = PieceManager(torrent)
         self.abort = False
+        self.paused = False
 
     def _empty_queue(self):
         while not self.available_peers.empty():
@@ -40,6 +41,16 @@ class TorrentClient:
             peer.stop()
         self.piece_manager.close()
         self.tracker.close()
+
+    def pause(self):
+        self.paused = True
+        for peer in self.peers:
+            peer.pause()
+
+    def restart(self):
+        self.paused = False
+        for peer in self.peers:
+            peer.restart()
 
     def _on_block_retrieved(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes):
         self.piece_manager.block_received(peer_id, piece_index, block_offset, data)
@@ -58,7 +69,7 @@ class TorrentClient:
                       for _ in range(MAX_PEER_CONNECTIONS)]
 
         previous = None
-        interval = 2 * 60  # Tracker服务器通信的默认间隔
+        interval = 20  # Tracker服务器通信的默认间隔
         i = 0
         while True:
             if self.piece_manager.finished:
