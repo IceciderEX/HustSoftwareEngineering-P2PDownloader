@@ -144,4 +144,3 @@ class TorrentClient:
         :return:
         """
         self.piece_manager.download_place(str)
-    
