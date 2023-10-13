@@ -137,3 +137,11 @@ class TorrentClient:
                 count += 1
         logging.info(f'Peers: {count}')
         return count
+
+    def find_download_place(self, pah: str):
+        """
+        指定下载位置
+        :return:
+        """
+        self.piece_manager.download_place(str)
+    
