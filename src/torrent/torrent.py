@@ -24,9 +24,14 @@ class Torrent:
         self.filepath = filepath
         with open(filepath, 'rb') as f:
             meta_info = f.read()  # bytes
-            self.meta_info = bencoding.Decode(meta_info).decode()  # OrderedDict
-            info_hash = bencoding.Encode(self.meta_info[b'info']).encode()  # bytes
-            self.info_hash: bytes = sha1(info_hash).digest()  # str size=20
+            # OrderedDict，包括announce, announce-list, info(name, length, piece length, pieces)...
+            self.meta_info = bencoding.Decode(meta_info).decode()
+
+            # 由info进行bencode.encode得到infohash(bytes)
+            info_hash = bencoding.Encode(self.meta_info[b'info']).encode()
+            # 再由sha1加密算法得到infohash(string)
+            self.info_hash: bytes = sha1(info_hash).digest()  # str size = 20
+            self.info_bytes = info_hash
             if b'files' in self.meta_info[b'info']:
                 raise RuntimeError("Do not support multiple files now!")
             logging.info(f"announce={self.meta_info[b'announce'].decode('utf-8')}")

@@ -12,10 +12,12 @@ async def test_connect():
     bt_tracker.close()
     # try:
     #     tracker_resp = await bt_tracker.connect(True)
-    #     print(tracker_resp.failure)
-    #     print(tracker_resp.complete)
-    #     print(tracker_resp.interval)
-    #     print(tracker_resp.peers)
+    #     if tracker_resp:
+    #         print(tracker_resp.failure)
+    #         print(tracker_resp.complete)
+    #         print(tracker_resp.interval)
+    #         print(tracker_resp.peers)
+    #         print("--------------------------------")
     # finally:
     #     bt_tracker.close()
 

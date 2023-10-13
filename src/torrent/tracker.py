@@ -17,7 +17,7 @@ from src.torrent.torrent import Torrent
     @author 郑卯杨
     @date 2023/10/10
     @version 1.0
-    
+
     该模块实现了和Tracker服务器的通信,目前支持http协议和udp协议
     实现了封装类Tracker,和Tracker服务器通信
     实现了封装类TrackerResponse,通过peers属性访问peers的 (ip,port)
@@ -111,13 +111,14 @@ class Tracker:
                 remote_port = int(remote_port)
                 print(remote_ip, remote_port)
             else:
-                raise ConnectionError('Unable to connect to tracker')
+                raise ConnectionError('Unable to connect to udp tracker')
             if self.sock is None:
                 self.sock = await asyncudp.create_socket(remote_addr=(remote_ip, remote_port))
             connect_request = struct.pack('>QII', 0x41727101980, 0, 99)
-            # print("send connect request")
+            print("send udp connect request")
             self.sock.sendto(connect_request)
             datagram, remote_addr = await self.sock.recvfrom()
+            print(datagram)
             action, transaction_id, connection_id = struct.unpack('>IIQ', datagram)
             if not action == 0 and not transaction_id == 99:
                 raise ConnectionError('Unable to connect to tracker')
@@ -157,7 +158,8 @@ class Tracker:
             params = {
                 'info_hash': self.torrent.info_hash,
                 'peer_id': self.peer_id,
-                'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
+                # 'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
+                'port': 5552,
                 'uploaded': uploaded,
                 'downloaded': downloaded,
                 'left': self.torrent.length - downloaded,

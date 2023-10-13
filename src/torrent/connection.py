@@ -1,4 +1,6 @@
 import asyncio
+import logging
+
 from src.torrent.manager import PieceManager
 from src.torrent.message import *
 from asyncio import Queue, StreamReader, StreamWriter, CancelledError
@@ -9,7 +11,7 @@ from typing import Optional, Callable
     @author 郑卯杨
     @date 2023/10/10
     @version 1.0
-    
+
     该模块负责和结点的通信
     实现了和Peer通信的最小单元Connection,能够不断地获取等待中的Peer并与之通信
     实现了异步流迭代器PeerStreamIterator,方便解析数据
@@ -133,7 +135,7 @@ CHOKED = "choked"
 INTERESTED = "interested"
 PENDING = 'pending_request'
 
-TIME_OUT = 10
+TIME_OUT = 12
 
 
 class Connection:
@@ -155,6 +157,7 @@ class Connection:
         self.piece_manager = piece_manager
         self.on_block_cb = on_block_cb  # 接收到Block数据时的回调函数
         self.future = asyncio.ensure_future(self._start())  # 协程任务
+        self.alive = False
 
     async def _handshake(self) -> bytes:
         """发送并解析handshake消息
@@ -167,8 +170,8 @@ class Connection:
 
         buf = b''
         tries = 1
-        while len(buf) < HandShake.length and tries < 10:
-            # 只要成功读取一个handshake就会跳出循环
+        while len(buf) < HandShake.length and tries < 30:
+            # 接受返回的handshake，只要成功读取一个handshake就会跳出循环
             tries += 1
             buf = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
 
@@ -210,6 +213,7 @@ class Connection:
         停止
         """
         self.my_state.append(STOPPED)
+        self.alive = False
         if not self.future.done():
             self.future.cancel()
 
@@ -218,6 +222,7 @@ class Connection:
         cancel 等待所有资源被释放完
         """
         logging.info(f"Closing peer {self.remote_id}")
+        self.alive = False
         if not self.future.done():
             self.future.cancel()
             try:
@@ -240,6 +245,8 @@ class Connection:
 
         while STOPPED not in self.my_state:
             ip, port = await self.queue.get()
+            if ip == '255.255.255.255':  # 广播IP
+                continue
             logging.info(f"Got assigned peer with {ip}:{port}")
             try:
                 # self.reader, self.writer = await asyncio.open_connection(ip, port)
@@ -250,6 +257,7 @@ class Connection:
                 self.my_state.append(CHOKED)
                 await asyncio.wait_for(self._send_interested(), timeout=TIME_OUT)
                 self.my_state.append(INTERESTED)
+                self.alive = True
                 async for message in PeerStreamIterator(self.reader, buffer):
                     if STOPPED in self.my_state:
                         break
@@ -295,6 +303,8 @@ class Connection:
                 logging.warning('Connection closed')
             except RuntimeError:
                 logging.warning("A runtime error occured")
+            except OSError:
+                logging.warning("指定的网络名格式无效/信号灯超时")
             except Exception:
                 logging.exception('An unknown error occurred')
                 # await self.cancel()
