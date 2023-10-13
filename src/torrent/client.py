@@ -23,13 +23,13 @@ MAX_PEER_CONNECTIONS = 40
 
 
 class TorrentClient:
-    def __init__(self, torrent: Torrent):
+    def __init__(self, torrent: Torrent, download_path: str = None):
         self.tracker = Tracker(torrent)
         self.available_peers = Queue()
         self.peers: List[Connection] = []
-        self.piece_manager = PieceManager(torrent)
         self.abort = False
         self.paused = False
+        self.piece_manager = PieceManager(torrent, download_path)
 
     def _empty_queue(self):
         while not self.available_peers.empty():
