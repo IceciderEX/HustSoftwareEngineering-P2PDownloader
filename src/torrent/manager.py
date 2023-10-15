@@ -33,7 +33,7 @@ class PieceManager:
     对Piece进行管理,负责决定请求块数据,写回Piece数据
     """
 
-    def __init__(self, torrent: Torrent, download_path: str = None):
+    def __init__(self, torrent: Torrent):
         self.torrent = torrent
         self.peers: Dict[bytes, BitArray] = {}
         self.pending_blocks: List[PendingRequest] = []
@@ -42,19 +42,13 @@ class PieceManager:
         self.have_pieces: List[Piece] = []
         self.max_pending_time = 120  # 2分钟
         self.total_pieces = len(torrent.pieces)
-        self.download_path = download_path
-        self.fd = self._init_fd()
+        self.fd = os.open(self.torrent.name, os.O_RDWR | os.O_CREAT)
         self.missing_pieces: List[Piece] = self._init_pieces()
         self.block_download_bytes = 0
 
-    def _init_fd(self):
-        if self.download_path is None:
-            return os.open(self.torrent.name, os.O_RDWR | os.O_CREAT)  # 在当前目录下创建下载的文件
-        return os.open(self.download_path, os.O_RDWR | os.O_CREAT)
-
     def _init_pieces(self) -> List[Piece]:
-        """使用torrent数据初始化每一个Piece和其包含的Block,只有最后一个piece的最后一个block可能不是标准大小
-
+        """
+        使用torrent数据初始化每一个Piece和其包含的Block,只有最后一个piece的最后一个block可能不是标准大小
         :return: List[Piece]
         """
         pieces = []

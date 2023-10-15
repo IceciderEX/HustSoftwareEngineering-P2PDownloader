@@ -16,8 +16,7 @@ from src.torrent.connection import Connection
     @version 1.0
     
     该模块集成了所有模块,真正地开始下载
-    封装了TorrentClient类,使用start()开始下载,stop()取消下载，pause()暂停下载，resume()继续下载
-    做图形化界面时start()是开始接口，stop()为取消接口
+    封装了TorrentClient类,使用start()开始下载,stop()取消下载，pause()暂停下载，restart()继续下载
 """
 
 MAX_PEER_CONNECTIONS = 516
@@ -25,12 +24,14 @@ MAX_PEER_CONNECTIONS = 516
 
 class TorrentClient:
     def __init__(self, torrent: Torrent):
+        self.before_bytes = None
+        self.before_time = None
         self.tracker = Tracker(torrent)
         self.available_peers = Queue()
         self.peers: List[Connection] = []
         self.abort = False
         self.paused = False
-        self.piece_manager = PieceManager(torrent, download_path)
+        self.piece_manager = PieceManager(torrent)
 
     def _empty_queue(self):
         while not self.available_peers.empty():
@@ -42,16 +43,6 @@ class TorrentClient:
             peer.stop()
         self.piece_manager.close()
         self.tracker.close()
-
-    def pause(self):
-        self.paused = True
-        for peer in self.peers:
-            peer.pause()
-
-    def restart(self):
-        self.paused = False
-        for peer in self.peers:
-            peer.restart()
 
     def _on_block_retrieved(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes):
         self.piece_manager.block_received(peer_id, piece_index, block_offset, data)
@@ -150,6 +141,24 @@ class TorrentClient:
     def find_download_place(self, pah: str):
         """
         指定下载位置
-        :return:
+        :return:无
         """
         self.piece_manager.download_place(str)
+
+    def pause(self):
+        """
+        暂停下载
+        :return: 无
+        """
+        self.paused = True
+        for peer in self.peers:
+            peer.pause()
+
+    def restart(self):
+        """
+        继续下载
+        :return: 无
+        """
+        self.paused = False
+        for peer in self.peers:
+            peer.restart()

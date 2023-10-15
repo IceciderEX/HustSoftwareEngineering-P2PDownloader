@@ -160,6 +160,7 @@ class Connection:
         self.on_block_cb = on_block_cb  # 接收到Block数据时的回调函数
         self.future = asyncio.ensure_future(self._start())  # 协程任务
         self.alive = False
+        self.pause_event = asyncio.Event()
 
     async def _handshake(self) -> bytes:
         """发送并解析handshake消息
@@ -219,13 +220,6 @@ class Connection:
         if not self.future.done():
             self.future.cancel()
 
-    def pause(self):
-        self.my_state.append(PAUSED)
-
-    def restart(self):
-        if PAUSED in self.my_state:
-            self.my_state.remove(PAUSED)
-
     async def cancel(self):
         """
         cancel 等待所有资源被释放完
@@ -253,8 +247,9 @@ class Connection:
         """
 
         while STOPPED not in self.my_state:
-            while PAUSED in self.my_state:
-                await asyncio.sleep(Connection.PAUSE_TIME)
+            if PAUSED in self.my_state:
+                await self.pause_event.wait()  # 暂停时等待暂停事件
+                continue  # 如果是暂停状态，直接跳过
             ip, port = await self.queue.get()
             if ip == '255.255.255.255':  # 广播IP
                 continue
@@ -323,3 +318,12 @@ class Connection:
                 # await self.cancel()
                 # raise e
             await self.cancel()
+
+    def pause(self):
+        self.my_state.append(PAUSED)
+        self.pause_event.clear()
+
+    def restart(self):
+        if PAUSED in self.my_state:
+            self.my_state.remove(PAUSED)
+            self.pause_event.set()
