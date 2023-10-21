@@ -32,6 +32,7 @@ class TorrentClient:
         self.abort = False
         self.paused = False
         self.piece_manager = PieceManager(torrent)
+        self.pause_event = asyncio.Event()
 
     def _empty_queue(self):
         while not self.available_peers.empty():
@@ -70,6 +71,9 @@ class TorrentClient:
             if self.abort:
                 logging.info('Aborting download...')
                 break
+            if self.paused:
+                await asyncio.sleep(0.5)
+                continue
             current = round(time.time())
             # if (not previous) or (previous + interval < current) or self.available_peers.empty():
             if (not previous) or (previous + interval < current) or self.return_peers() < 0:
@@ -153,6 +157,7 @@ class TorrentClient:
         self.paused = True
         for peer in self.peers:
             peer.pause()
+        logging.info(f'Download Paused')
 
     def restart(self):
         """
@@ -162,3 +167,4 @@ class TorrentClient:
         self.paused = False
         for peer in self.peers:
             peer.restart()
+        logging.info(f'Download Restarted')

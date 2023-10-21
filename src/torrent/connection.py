@@ -247,9 +247,6 @@ class Connection:
         """
 
         while STOPPED not in self.my_state:
-            if PAUSED in self.my_state:
-                await self.pause_event.wait()  # 暂停时等待暂停事件
-                continue  # 如果是暂停状态，直接跳过
             ip, port = await self.queue.get()
             if ip == '255.255.255.255':  # 广播IP
                 continue
@@ -268,7 +265,7 @@ class Connection:
                     if STOPPED in self.my_state:
                         break
                     if PAUSED in self.my_state:
-                        break
+                        await self.pause_event.wait()  # 暂停时等待暂停事件
                     if type(message) is BitField:
                         self.piece_manager.add_peer(self.remote_id, message.bitfield)
                     elif type(message) is Interested:
