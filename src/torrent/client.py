@@ -32,7 +32,6 @@ class TorrentClient:
         self.abort = False
         self.paused = False
         self.piece_manager = PieceManager(torrent)
-        self.pause_event = asyncio.Event()
 
     def _empty_queue(self):
         while not self.available_peers.empty():
