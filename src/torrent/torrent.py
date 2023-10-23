@@ -27,13 +27,11 @@ class Torrent:
             # OrderedDict，包括announce, announce-list, info(name, length, piece length, pieces)...
             self.meta_info = bencoding.Decode(meta_info).decode()
 
-            # 由info进行bencode.encode得到infohash(bytes)
+            # 由info进行bencode.encode得到info hash(bytes)
             info_hash = bencoding.Encode(self.meta_info[b'info']).encode()
-            # 再由sha1加密算法得到infohash(string)
+            # 再由sha1加密算法得到info hash(string)
             self.info_hash: bytes = sha1(info_hash).digest()  # str size = 20
             self.info_bytes = info_hash
-            if b'files' in self.meta_info[b'info']:
-                raise RuntimeError("Do not support multiple files now!")
             logging.info(f"announce={self.meta_info[b'announce'].decode('utf-8')}")
 
     @property
@@ -76,4 +74,30 @@ class Torrent:
         """
         :return: 返回要下载的文件的名字
         """
+        return self.get_name()
+
+    def get_name(self) -> str:
         return self.meta_info[b'info'][b'name'].decode('utf-8')
+
+    def is_multi_file(self) -> bool:
+        """
+        判断是否为多文件
+        :return: true or false
+        """
+        return b'files' in self.meta_info[b'info']
+
+    def get_files(self):
+        """
+        :return: 文件信息列表
+        """
+        if self.is_multi_file():
+            files = self.meta_info[b'info'][b'files']
+            file_list = []
+            for file_info in files:
+                path = [item.decode('utf-8') for item in file_info[b'path']]
+                length = file_info[b'length']
+                file_list.append({'path': path, 'length': length})
+            return file_list
+        else:
+            return [{'path': [self.get_name()], 'length': self.length}]
+

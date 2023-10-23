@@ -41,7 +41,6 @@ class TorrentClient:
         self.abort = True
         for peer in self.peers:
             peer.stop()
-        self.piece_manager.close()
         self.tracker.close()
 
     def _on_block_retrieved(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes):
