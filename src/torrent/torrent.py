@@ -44,7 +44,7 @@ class Torrent:
     @property
     def length(self) -> int:
         """
-        :return: 返回 下载文件的总大小
+        :return: 返回 单文件下载时下载文件的总大小
         """
         return self.meta_info[b'info'][b'length']
 
