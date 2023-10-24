@@ -12,7 +12,7 @@ def main():
                         format='%(asctime)s - %(levelname)s: %(message)s',
                         datefmt='%Y/%m/%d %I:%M:%S %p')
     loop = asyncio.get_event_loop()
-    client = TorrentClient(Torrent("file/狂飙第22集.torrent"))
+    client = TorrentClient(Torrent("file/"))
     task = loop.create_task(client.start())
     task2 = loop.create_task(client.return_download_time())
 

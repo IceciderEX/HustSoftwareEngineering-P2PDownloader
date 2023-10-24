@@ -3,6 +3,7 @@ from hashlib import sha1
 from typing import List
 
 from src.torrent import bencoding
+import bencodepy
 
 """
     @filename torrent.py
@@ -25,7 +26,8 @@ class Torrent:
         with open(filepath, 'rb') as f:
             meta_info = f.read()  # bytes
             # OrderedDict，包括announce, announce-list, info(name, length, piece length, pieces)...
-            self.meta_info = bencoding.Decode(meta_info).decode()
+            # self.meta_info = bencoding.Decode(meta_info).decode()
+            self.meta_info = bencodepy.decode(meta_info)
 
             # 由info进行bencode.encode得到infohash(bytes)
             info_hash = bencoding.Encode(self.meta_info[b'info']).encode()
@@ -34,7 +36,7 @@ class Torrent:
             self.info_bytes = info_hash
             if b'files' in self.meta_info[b'info']:
                 raise RuntimeError("Do not support multiple files now!")
-            logging.info(f"announce={self.meta_info[b'announce'].decode('utf-8')}")
+            logging.info(f"announce={self.trackers}")
 
     @property
     def announce(self) -> str:
@@ -77,3 +79,15 @@ class Torrent:
         :return: 返回要下载的文件的名字
         """
         return self.meta_info[b'info'][b'name'].decode('utf-8')
+
+    @property
+    def trackers(self) -> List[str]:
+        """
+        Return a list of all trackers in the torrent.
+        """
+        if b'announce-list' in self.meta_info:
+            return [url.decode('utf-8') for tier in self.meta_info[b'announce-list'] for url in tier]
+        elif b'announce' in self.meta_info:
+            return [self.meta_info[b'announce'].decode('utf-8')]
+        else:
+            return []

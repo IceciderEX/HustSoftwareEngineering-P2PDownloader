@@ -1,5 +1,9 @@
 import asyncio
 import logging
+import socket
+import time
+
+import asyncudp
 
 from src.torrent.manager import PieceManager
 from src.torrent.message import *
@@ -126,6 +130,103 @@ class PeerStreamIterator:
         return None
 
 
+class UDPPeerStreamIterator:
+    CHUNK_SIZE = 10 * 1024
+
+    def __init__(self, udp_socket, initial: bytes = None):
+        self.udp_socket = udp_socket
+        self.buffer = self.buffer = initial if initial else b''
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        while True:
+            try:
+                data, addr = await self.udp_socket.recvfrom()
+                if data:
+                    self.buffer += data
+                    message = self.parse()
+                    if message:
+                        return message
+                else:
+                    logging.debug('No data from socket')
+                    if self.buffer:
+                        message = self.parse()
+                        if message:
+                            return message
+                    raise StopAsyncIteration()
+            except asyncio.TimeoutError:
+                raise TimeoutError
+            except ConnectionResetError:
+                logging.debug('Connection closed by peer')
+                raise StopAsyncIteration()
+            except CancelledError:
+                raise StopAsyncIteration()
+            except StopAsyncIteration as e:
+                raise e
+            except TimeoutError:
+                raise TimeoutError()
+            except Exception:
+                logging.exception('Error when iterating over UDP stream!')
+                raise StopAsyncIteration()
+
+    def parse(self):
+        # 根据 UDP 数据包的格式解析数据，返回适当的 Message 类
+        # 你需要根据你的协议来解析 UDP 数据包
+        header_length = 4
+
+        if len(self.buffer) > 4:
+            message_length = struct.unpack('>I', self.buffer[:4])[0]
+            if message_length == 0:
+                return KeepAlive()
+            if len(self.buffer) >= message_length:
+                def _consume():
+                    self.buffer = self.buffer[header_length + message_length:]
+
+                def _data():
+                    return self.buffer[:header_length + message_length]
+
+                msg_id = struct.unpack('>b', self.buffer[4:5])[0]
+                if msg_id == MsgId.Choke:
+                    _consume()
+                    return Choke()
+                elif msg_id == MsgId.Unchoke:
+                    _consume()
+                    return UnChoke()
+                elif msg_id == MsgId.Interested:
+                    _consume()
+                    return Interested()
+                elif msg_id == MsgId.NotInterested:
+                    _consume()
+                    return NotInterested()
+                elif msg_id == MsgId.Bitfield:
+                    data = _data()
+                    _consume()
+                    return BitField.decode(data)
+                elif msg_id == MsgId.Have:
+                    data = _data()
+                    _consume()
+                    return Have.decode(data)
+                elif msg_id == MsgId.Request:
+                    data = _data()
+                    _consume()
+                    return Request.decode(data)
+                elif msg_id == MsgId.Piece:
+                    data = _data()
+                    _consume()
+                    return Piece.decode(data)
+                elif msg_id == MsgId.Cancel:
+                    data = _data()
+                    _consume()
+                    return Cancel.decode(data)
+                else:
+                    logging.info("decode unknown message")
+            else:
+                logging.debug('Not enough in buffer in order to parse')
+        return None
+
+
 class ProtocolError(BaseException):
     pass
 
@@ -154,10 +255,14 @@ class Connection:
         self.remote_id: Optional[bytes] = None
         self.writer: Optional[StreamWriter] = None
         self.reader: Optional[StreamReader] = None
+        self.sock = None
         self.piece_manager = piece_manager
         self.on_block_cb = on_block_cb  # 接收到Block数据时的回调函数
-        self.future = asyncio.ensure_future(self._start())  # 协程任务
+        self.future = asyncio.ensure_future(self._start())  # 协程任务，在Connection对象创建后立即执行
+        self.ip = None
+        self.port = None
         self.alive = False
+        self.use_udp = False
 
     async def _handshake(self) -> bytes:
         """发送并解析handshake消息
@@ -165,25 +270,32 @@ class Connection:
         :return: data[HandShake.length:]
         :raise: ProtocolError: invalid handshake
         """
-        self.writer.write(HandShake(self.info_hash, self.peer_id).encode())
-        await self.writer.drain()
+        if not self.use_udp:
+            self.writer.write(HandShake(self.info_hash, self.peer_id).encode())
+            await self.writer.drain()
+            buf = b''
+            tries = 1
+            while len(buf) < HandShake.length and tries < 30:
+                # 接受返回的handshake，只要成功读取一个handshake就会跳出循环
+                tries += 1
+                buf = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
 
-        buf = b''
-        tries = 1
-        while len(buf) < HandShake.length and tries < 30:
-            # 接受返回的handshake，只要成功读取一个handshake就会跳出循环
-            tries += 1
-            buf = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
-
-        response = HandShake.decode(buf[:HandShake.length])
-        if not response:
-            raise ProtocolError("Unable to receive and parse a handshake")
-        if response.info_hash != self.info_hash:
-            raise ProtocolError("Handshake with invalid info_hash")
-
-        self.remote_id = response.peer_id
-        logging.debug(f"Handshake with peer was successful")
-        return buf[HandShake.length:]
+                response = HandShake.decode(buf[:HandShake.length])
+                if not response:
+                    raise ProtocolError("Unable to receive and parse a handshake")
+                if response.info_hash != self.info_hash:
+                    raise ProtocolError("Handshake with invalid info_hash")
+                self.remote_id = response.peer_id
+                logging.debug(f"Handshake with peer was successful")
+                return buf[HandShake.length:]
+        else:
+            self.sock.sendto(HandShake(self.info_hash, self.peer_id).encode())
+            # Wait for the handshake response
+            data, _ = await self.sock.recvfrom()
+            if not data.startswith(b'\x13BitTorrent protocol'):
+                print('Handshake failed.')
+            # 超时处理
+            return data[HandShake.length:]
 
     async def _send_interested(self) -> None:
         """
@@ -191,8 +303,11 @@ class Connection:
         """
         message = Interested()
         logging.debug(f"Sending message: {message}")
-        self.writer.write(message.encode())
-        await self.writer.drain()
+        if not self.use_udp:
+            self.writer.write(message.encode())
+            await self.writer.drain()
+        else:
+            self.sock.sendto(message.encode())
 
     async def _next_request(self):
         """
@@ -204,8 +319,11 @@ class Connection:
 
             logging.debug(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
                           f'of {block.length} bytes from peer {self.remote_id}')
-            self.writer.write(message.encode())
-            await self.writer.drain()
+            if not self.use_udp:
+                self.writer.write(message.encode())
+                await self.writer.drain()
+            else:
+                self.sock.sendto(message.encode())
             logging.debug(f"gain block {block.offset / REQUEST_SIZE} for piece {block.piece} successfully")
 
     def stop(self):
@@ -221,7 +339,7 @@ class Connection:
         """
         cancel 等待所有资源被释放完
         """
-        logging.info(f"Closing peer {self.remote_id}")
+        logging.debug(f"Closing peer {self.remote_id}")
         self.alive = False
         if not self.future.done():
             self.future.cancel()
@@ -229,9 +347,13 @@ class Connection:
                 await self.future
             except asyncio.CancelledError:
                 pass
-        if self.writer:
-            self.writer.close()
-            await self.writer.wait_closed()
+        if not self.use_udp:
+            if self.writer:
+                self.writer.close()
+                await self.writer.wait_closed()
+        else:
+            if self.sock:
+                self.sock.close()
         self.queue.task_done()
 
     async def _start(self):
@@ -244,61 +366,104 @@ class Connection:
         """
 
         while STOPPED not in self.my_state:
-            ip, port = await self.queue.get()
-            if ip == '255.255.255.255':  # 广播IP
+            ip, port, use_udp = await self.queue.get()
+            if ip == '255.255.255.255' or ip == '0.0.0.0':  # 广播IP
                 continue
-            logging.info(f"Got assigned peer with {ip}:{port}")
+            logging.debug(f"Got assigned peer with {ip}:{port}")
             try:
-                # self.reader, self.writer = await asyncio.open_connection(ip, port)
-                self.reader, self.writer = await asyncio.wait_for(asyncio.open_connection(ip, port),
-                                                                  timeout=TIME_OUT)  # 设置最大等待时间为5s
-                logging.info(f"Connecting to peer {ip}:{port}")
+                if use_udp:
+                    self.ip = ip
+                    self.port = port
+                    self.sock = await asyncio.wait_for(asyncudp.create_socket(remote_addr=(ip, port)),
+                                                       timeout=TIME_OUT)  # 设置最大等待时间为5s
+                    self.use_udp = True
+                else:
+                    self.reader, self.writer = await asyncio.wait_for(asyncio.open_connection(ip, port),
+                                                                      timeout=TIME_OUT)  # 设置最大等待时间为5s
+                logging.debug(f"Connecting to peer {ip}:{port}")
                 buffer = await asyncio.wait_for(self._handshake(), timeout=TIME_OUT)
                 self.my_state.append(CHOKED)
                 await asyncio.wait_for(self._send_interested(), timeout=TIME_OUT)
                 self.my_state.append(INTERESTED)
                 self.alive = True
-                async for message in PeerStreamIterator(self.reader, buffer):
-                    if STOPPED in self.my_state:
-                        break
-                    if type(message) is BitField:
-                        self.piece_manager.add_peer(self.remote_id, message.bitfield)
-                    elif type(message) is Interested:
-                        self.peer_state.append(INTERESTED)
-                    elif type(message) is NotInterested:
-                        if INTERESTED in self.peer_state:
-                            self.peer_state.remove(INTERESTED)
-                    elif type(message) is Choke:
-                        self.my_state.append(CHOKED)
-                    elif type(message) is UnChoke:
-                        if CHOKED in self.my_state:
-                            self.my_state.remove(CHOKED)
-                    elif type(message) is Have:
-                        self.piece_manager.update_peer(self.remote_id, message.index)
-                    elif type(message) is KeepAlive:
-                        pass
-                    elif type(message) is Piece:
-                        self.my_state.remove(PENDING)
-                        self.on_block_cb(
-                            peer_id=self.remote_id,
-                            piece_index=message.index,
-                            block_offset=message.begin,
-                            data=message.block)
-                    elif type(message) is Request:
-                        logging.info('Ignoring the received Request message.')
-                    elif type(message) is Cancel:
-                        logging.info('Ignoring the received Cancel message.')
+                if not self.use_udp:
+                    async for message in PeerStreamIterator(self.reader, buffer):
+                        if STOPPED in self.my_state:
+                            break
+                        if type(message) is BitField:
+                            self.piece_manager.add_peer(self.remote_id, message.bitfield)
+                        elif type(message) is Interested:
+                            self.peer_state.append(INTERESTED)
+                        elif type(message) is NotInterested:
+                            if INTERESTED in self.peer_state:
+                                self.peer_state.remove(INTERESTED)
+                        elif type(message) is Choke:
+                            self.my_state.append(CHOKED)
+                        elif type(message) is UnChoke:
+                            if CHOKED in self.my_state:
+                                self.my_state.remove(CHOKED)
+                        elif type(message) is Have:
+                            self.piece_manager.update_peer(self.remote_id, message.index)
+                        elif type(message) is KeepAlive:
+                            pass
+                        elif type(message) is Piece:
+                            self.my_state.remove(PENDING)
+                            self.on_block_cb(
+                                peer_id=self.remote_id,
+                                piece_index=message.index,
+                                block_offset=message.begin,
+                                data=message.block)
+                        elif type(message) is Request:
+                            logging.info('Ignoring the received Request message.')
+                        elif type(message) is Cancel:
+                            logging.info('Ignoring the received Cancel message.')
 
-                    if CHOKED not in self.my_state:
-                        if INTERESTED in self.my_state:
-                            if PENDING not in self.my_state:
-                                self.my_state.append(PENDING)
-                                await asyncio.wait_for(self._next_request(), timeout=TIME_OUT)
+                        if CHOKED not in self.my_state:
+                            if INTERESTED in self.my_state:
+                                if PENDING not in self.my_state:
+                                    self.my_state.append(PENDING)
+                                    await asyncio.wait_for(self._next_request(), timeout=TIME_OUT)
+                else:
+                    async for message in UDPPeerStreamIterator(self.sock, buffer):
+                        if STOPPED in self.my_state:
+                            break
+                        if type(message) is BitField:
+                            self.piece_manager.add_peer(self.remote_id, message.bitfield)
+                        elif type(message) is Interested:
+                            self.peer_state.append(INTERESTED)
+                        elif type(message) is NotInterested:
+                            if INTERESTED in self.peer_state:
+                                self.peer_state.remove(INTERESTED)
+                        elif type(message) is Choke:
+                            self.my_state.append(CHOKED)
+                        elif type(message) is UnChoke:
+                            if CHOKED in self.my_state:
+                                self.my_state.remove(CHOKED)
+                        elif type(message) is Have:
+                            self.piece_manager.update_peer(self.remote_id, message.index)
+                        elif type(message) is KeepAlive:
+                            pass
+                        elif type(message) is Piece:
+                            self.my_state.remove(PENDING)
+                            self.on_block_cb(
+                                peer_id=self.remote_id,
+                                piece_index=message.index,
+                                block_offset=message.begin,
+                                data=message.block)
+                        elif type(message) is Request:
+                            logging.info('Ignoring the received Request message.')
+                        elif type(message) is Cancel:
+                            logging.info('Ignoring the received Cancel message.')
 
+                        if CHOKED not in self.my_state:
+                            if INTERESTED in self.my_state:
+                                if PENDING not in self.my_state:
+                                    self.my_state.append(PENDING)
+                                    await asyncio.wait_for(self._next_request(), timeout=TIME_OUT)
             except ProtocolError:
                 logging.exception("protocol error")
             except (ConnectionRefusedError, TimeoutError):
-                logging.warning('Unable to connect to peer')
+                logging.warning(f'Unable to connect to peer: {ip}:{port}')
             except (ConnectionResetError, CancelledError):
                 logging.warning('Connection closed')
             except RuntimeError:
