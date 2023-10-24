@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>src.torrent.connection &mdash; src documentation</title>
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css"/>
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css"/>
+    <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+    <![endif]-->
+
+    <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html"/>
+    <link rel="search" title="Search" href="../../../search.html"/>
+</head>
+
+<body class="wy-body-for-nav">
+<div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+        <div class="wy-side-scroll">
+            <div class="wy-side-nav-search">
+
+
+                <a href="../../../index.html" class="icon icon-home">
+                    src
+                </a>
+                <div role="search">
+                    <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+                        <input type="text" name="q" placeholder="Search docs" aria-label="Search docs"/>
+                        <input type="hidden" name="check_keywords" value="yes"/>
+                        <input type="hidden" name="area" value="default"/>
+                    </form>
+                </div>
+            </div>
+            <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+                <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../../src.html">src package</a></li>
+                </ul>
+
+            </div>
+        </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+        <nav class="wy-nav-top" aria-label="Mobile navigation menu">
+            <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+            <a href="../../../index.html">src</a>
+        </nav>
+
+        <div class="wy-nav-content">
+            <div class="rst-content">
+                <div role="navigation" aria-label="Page navigation">
+                    <ul class="wy-breadcrumbs">
+                        <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+                        <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+                        <li class="breadcrumb-item active">src.torrent.connection</li>
+                        <li class="wy-breadcrumbs-aside">
+                        </li>
+                    </ul>
+                    <hr/>
+                </div>
+                <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+                    <div itemprop="articleBody">
+
+                        <h1>Source code for src.torrent.connection</h1>
+                        <div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">from</span> <span class="nn">src.torrent.manager</span> <span class="kn">import</span> <span class="n">PieceManager</span>
+<span class="kn">from</span> <span class="nn">src.torrent.message</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">asyncio</span> <span class="kn">import</span> <span class="n">Queue</span><span
+                                class="p">,</span> <span class="n">StreamReader</span><span class="p">,</span> <span
+                                class="n">StreamWriter</span><span class="p">,</span> <span
+                                class="n">CancelledError</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span
+                                class="n">Optional</span><span class="p">,</span> <span class="n">Callable</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    @filename connection.py</span>
+<span class="sd">    @author 郑卯杨</span>
+<span class="sd">    @date 2023/10/10</span>
+<span class="sd">    @version 1.0</span>
+<span class="sd">    </span>
+<span class="sd">    该模块负责和结点的通信</span>
+<span class="sd">    实现了和Peer通信的最小单元Connection,能够不断地获取等待中的Peer并与之通信</span>
+<span class="sd">    实现了异步流迭代器PeerStreamIterator,方便解析数据</span>
+<span class="sd">    实现了自定义异常ProtocolError</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="PeerStreamIterator">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.connection.PeerStreamIterator">[docs]</a>
+<span class="k">class</span> <span class="nc">PeerStreamIterator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    接受与Peer通信时回传的信息,并根据信息的类型封装成不同的Message类,返回给上一级调用</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">CHUNK_SIZE</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span
+        class="mi">1024</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">,</span> <span class="n">reader</span><span class="p">:</span> <span
+        class="n">StreamReader</span><span class="p">,</span> <span class="n">initial</span><span
+        class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="kc">None</span><span
+        class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reader</span> <span class="o">=</span> <span
+        class="n">reader</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span> <span class="o">=</span> <span
+        class="n">initial</span> <span class="k">if</span> <span class="n">initial</span> <span
+        class="k">else</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="fm">__aiter__</span><span class="p">(</span><span
+        class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="fm">__anext__</span><span
+        class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: Message</span>
+<span class="sd">        :raise: ConnectionResetError: Connection closed by peer</span>
+<span class="sd">        :raise: TimeoutError: Time out</span>
+<span class="sd">        :raise: StopAsyncIteration: stop iteration</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span
+        class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="bp">self</span><span
+        class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">read</span><span
+        class="p">(</span><span class="n">PeerStreamIterator</span><span class="o">.</span><span
+        class="n">CHUNK_SIZE</span><span class="p">),</span> <span class="n">timeout</span><span class="o">=</span><span
+        class="mi">10</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">data</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span> <span
+        class="o">+=</span> <span class="n">data</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">parse</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">message</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="n">message</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span
+        class="p">(</span><span class="s1">&#39;No data read from stream&#39;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">buffer</span><span class="p">:</span>
+                        <span class="n">message</span> <span class="o">=</span> <span class="bp">self</span><span
+        class="o">.</span><span class="n">parse</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">message</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="n">message</span>
+                    <span class="k">raise</span> <span class="ne">StopAsyncIteration</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">ConnectionResetError</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span
+        class="p">(</span><span class="s1">&#39;Connection closed by peer&#39;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">StopAsyncIteration</span><span class="p">()</span>
+            <span class="k">except</span> <span class="n">CancelledError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">StopAsyncIteration</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">StopAsyncIteration</span> <span class="k">as</span> <span
+        class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">e</span>
+            <span class="k">except</span> <span class="ne">TimeoutError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span
+        class="p">(</span><span class="s1">&#39;Error when iterating over stream!&#39;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">StopAsyncIteration</span><span class="p">()</span>
+        <span class="c1"># raise StopAsyncIteration()</span>
+
+<div class="viewcode-block" id="PeerStreamIterator.parse">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.connection.PeerStreamIterator.parse">[docs]</a>
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: 根据Peer回传的信息解码并封装成不同的Message类</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">header_length</span> <span class="o">=</span> <span class="mi">4</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span
+        class="o">.</span><span class="n">buffer</span><span class="p">)</span> <span class="o">&gt;</span> <span
+        class="mi">4</span><span class="p">:</span>
+            <span class="n">message_length</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span
+        class="n">unpack</span><span class="p">(</span><span class="s1">&#39;&gt;I&#39;</span><span
+        class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span
+        class="p">[:</span><span class="mi">4</span><span class="p">])[</span><span class="mi">0</span><span
+        class="p">]</span>
+            <span class="k">if</span> <span class="n">message_length</span> <span class="o">==</span> <span
+        class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">KeepAlive</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span
+        class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">)</span> <span
+        class="o">&gt;=</span> <span class="n">message_length</span><span class="p">:</span>
+                <span class="k">def</span> <span class="nf">_consume</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span> <span
+        class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span
+        class="p">[</span><span class="n">header_length</span> <span class="o">+</span> <span
+        class="n">message_length</span><span class="p">:]</span>
+
+                <span class="k">def</span> <span class="nf">_data</span><span class="p">():</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span
+        class="p">[:</span><span class="n">header_length</span> <span class="o">+</span> <span
+        class="n">message_length</span><span class="p">]</span>
+
+                <span class="n">msg_id</span> <span class="o">=</span> <span class="n">struct</span><span
+        class="o">.</span><span class="n">unpack</span><span class="p">(</span><span
+        class="s1">&#39;&gt;b&#39;</span><span class="p">,</span> <span class="bp">self</span><span
+        class="o">.</span><span class="n">buffer</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span
+        class="mi">5</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">msg_id</span> <span class="o">==</span> <span
+        class="n">MsgId</span><span class="o">.</span><span class="n">Choke</span><span class="p">:</span>
+                    <span class="n">_consume</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">Choke</span><span class="p">()</span>
+                <span class="k">elif</span> <span class="n">msg_id</span> <span class="o">==</span> <span class="n">MsgId</span><span
+        class="o">.</span><span class="n">Unchoke</span><span class="p">:</span>
+                    <span class="n">_consume</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">UnChoke</span><span class="p">()</span>
+                <span class="k">elif</span> <span class="n">msg_id</span> <span class="o">==</span> <span class="n">MsgId</span><span
+        class="o">.</span><span class="n">Interested</span><span class="p">:</span>
+                    <span class="n">_consume</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">Interested</span><span class="p">()</span>
+                <span class="k">elif</span> <span class="n">msg_id</span> <span class="o">==</span> <span class="n">MsgId</span><span
+        class="o">.</span><span class="n">NotInterested</span><span class="p">:</span>
+                    <span class="n">_consume</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">NotInterested</span><span class="p">()</span>
+                <span class="k">elif</span> <span class="n">msg_id</span> <span class="o">==</span> <span class="n">MsgId</span><span
+        class="o">.</span><span class="n">Bitfield</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">_data</span><span
+        class="p">()</span>
+                    <span class="n">_consume</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">BitField</span><span class="o">.</span><span
+        class="n">decode</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">msg_id</span> <span class="o">==</span> <span class="n">MsgId</span><span
+        class="o">.</span><span class="n">Have</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">_data</span><span
+        class="p">()</span>
+                    <span class="n">_consume</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">Have</span><span class="o">.</span><span class="n">decode</span><span
+        class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">msg_id</span> <span class="o">==</span> <span class="n">MsgId</span><span
+        class="o">.</span><span class="n">Request</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">_data</span><span
+        class="p">()</span>
+                    <span class="n">_consume</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">Request</span><span class="o">.</span><span class="n">decode</span><span
+        class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">msg_id</span> <span class="o">==</span> <span class="n">MsgId</span><span
+        class="o">.</span><span class="n">Piece</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">_data</span><span
+        class="p">()</span>
+                    <span class="n">_consume</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">Piece</span><span class="o">.</span><span class="n">decode</span><span
+        class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">msg_id</span> <span class="o">==</span> <span class="n">MsgId</span><span
+        class="o">.</span><span class="n">Cancel</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">_data</span><span
+        class="p">()</span>
+                    <span class="n">_consume</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">Cancel</span><span class="o">.</span><span class="n">decode</span><span
+        class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span
+        class="p">(</span><span class="s2">&quot;decode unknown message&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span
+        class="p">(</span><span class="s1">&#39;Not enough in buffer in order to parse&#39;</span><span
+        class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ProtocolError">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.connection.ProtocolError">[docs]</a>
+<span class="k">class</span> <span class="nc">ProtocolError</span><span class="p">(</span><span
+        class="ne">BaseException</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+
+<span class="n">STOPPED</span> <span class="o">=</span> <span class="s2">&quot;stopped&quot;</span>
+<span class="n">CHOKED</span> <span class="o">=</span> <span class="s2">&quot;choked&quot;</span>
+<span class="n">INTERESTED</span> <span class="o">=</span> <span class="s2">&quot;interested&quot;</span>
+<span class="n">PENDING</span> <span class="o">=</span> <span class="s1">&#39;pending_request&#39;</span>
+
+<span class="n">TIME_OUT</span> <span class="o">=</span> <span class="mi">10</span>
+
+
+<div class="viewcode-block" id="Connection">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.connection.Connection">[docs]</a>
+<span class="k">class</span> <span class="nc">Connection</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Connection是执行通信任务的最小单元,通过封装为协程来实现任务队列的自动管理调用</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">,</span> <span class="n">queue</span><span class="p">:</span> <span class="n">Queue</span><span
+        class="p">,</span> <span class="n">info_hash</span><span class="p">:</span> <span class="nb">bytes</span><span
+        class="p">,</span>
+                 <span class="n">peer_id</span><span class="p">:</span> <span class="nb">bytes</span><span
+        class="p">,</span> <span class="n">piece_manager</span><span class="p">:</span> <span
+        class="n">PieceManager</span><span class="p">,</span>
+                 <span class="n">on_block_cb</span><span class="p">:</span> <span class="n">Optional</span><span
+        class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span
+        class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span> <span
+        class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peer_state</span> <span
+        class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span
+        class="n">queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info_hash</span> <span
+        class="o">=</span> <span class="n">info_hash</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span> <span
+        class="o">=</span> <span class="n">peer_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remote_id</span><span
+        class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bytes</span><span
+        class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="p">:</span> <span
+        class="n">Optional</span><span class="p">[</span><span class="n">StreamWriter</span><span
+        class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reader</span><span class="p">:</span> <span
+        class="n">Optional</span><span class="p">[</span><span class="n">StreamReader</span><span
+        class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">piece_manager</span> <span
+        class="o">=</span> <span class="n">piece_manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">on_block_cb</span> <span class="o">=</span> <span
+        class="n">on_block_cb</span>  <span class="c1"># 接收到Block数据时的回调函数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">future</span> <span class="o">=</span> <span
+        class="n">asyncio</span><span class="o">.</span><span class="n">ensure_future</span><span
+        class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_start</span><span
+        class="p">())</span>  <span class="c1"># 协程任务</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_handshake</span><span
+        class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span
+        class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;发送并解析handshake消息</span>
+
+<span class="sd">        :return: data[HandShake.length:]</span>
+<span class="sd">        :raise: ProtocolError: invalid handshake</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="o">.</span><span
+        class="n">write</span><span class="p">(</span><span class="n">HandShake</span><span class="p">(</span><span
+        class="bp">self</span><span class="o">.</span><span class="n">info_hash</span><span class="p">,</span> <span
+        class="bp">self</span><span class="o">.</span><span class="n">peer_id</span><span class="p">)</span><span
+        class="o">.</span><span class="n">encode</span><span class="p">())</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">writer</span><span class="o">.</span><span class="n">drain</span><span class="p">()</span>
+
+        <span class="n">buf</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span>
+        <span class="n">tries</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">buf</span><span
+        class="p">)</span> <span class="o">&lt;</span> <span class="n">HandShake</span><span class="o">.</span><span
+        class="n">length</span> <span class="ow">and</span> <span class="n">tries</span> <span
+        class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="c1"># 只要成功读取一个handshake就会跳出循环</span>
+            <span class="n">tries</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">buf</span> <span class="o">=</span> <span class="k">await</span> <span
+        class="bp">self</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span
+        class="n">read</span><span class="p">(</span><span class="n">PeerStreamIterator</span><span
+        class="o">.</span><span class="n">CHUNK_SIZE</span><span class="p">)</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="n">HandShake</span><span
+        class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">buf</span><span
+        class="p">[:</span><span class="n">HandShake</span><span class="o">.</span><span class="n">length</span><span
+        class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ProtocolError</span><span class="p">(</span><span class="s2">&quot;Unable to receive and parse a handshake&quot;</span><span
+        class="p">)</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span
+        class="n">info_hash</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">info_hash</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ProtocolError</span><span class="p">(</span><span class="s2">&quot;Handshake with invalid info_hash&quot;</span><span
+        class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">remote_id</span> <span
+        class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">peer_id</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span
+        class="sa">f</span><span class="s2">&quot;Handshake with peer was successful&quot;</span><span
+        class="p">)</span>
+        <span class="k">return</span> <span class="n">buf</span><span class="p">[</span><span class="n">HandShake</span><span
+        class="o">.</span><span class="n">length</span><span class="p">:]</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_send_interested</span><span
+        class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span
+        class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: 向Peer发送Interested信息</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="n">Interested</span><span
+        class="p">()</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span
+        class="sa">f</span><span class="s2">&quot;Sending message: </span><span class="si">{</span><span class="n">message</span><span
+        class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="o">.</span><span
+        class="n">write</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span
+        class="n">encode</span><span class="p">())</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">writer</span><span class="o">.</span><span class="n">drain</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_next_request</span><span
+        class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: 获取下一个需要请求的块并向Peer发送请求</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">piece_manager</span><span class="o">.</span><span class="n">next_request</span><span
+        class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">remote_id</span><span
+        class="p">)</span>
+        <span class="k">if</span> <span class="n">block</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="n">Request</span><span
+        class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">piece</span><span
+        class="p">,</span> <span class="n">block</span><span class="o">.</span><span class="n">offset</span><span
+        class="p">,</span> <span class="n">block</span><span class="o">.</span><span class="n">length</span><span
+        class="p">)</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span
+        class="p">(</span><span class="sa">f</span><span class="s1">&#39;Requesting block </span><span
+        class="si">{</span><span class="n">block</span><span class="o">.</span><span class="n">offset</span><span
+        class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">REQUEST_SIZE</span><span
+        class="si">}</span><span class="s1"> for piece </span><span class="si">{</span><span class="n">block</span><span
+        class="o">.</span><span class="n">piece</span><span class="si">}</span><span class="s1"> &#39;</span>
+                          <span class="sa">f</span><span class="s1">&#39;of </span><span class="si">{</span><span
+        class="n">block</span><span class="o">.</span><span class="n">length</span><span class="si">}</span><span
+        class="s1"> bytes from peer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span
+        class="n">remote_id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span
+        class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">message</span><span
+        class="o">.</span><span class="n">encode</span><span class="p">())</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">writer</span><span class="o">.</span><span class="n">drain</span><span class="p">()</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span
+        class="p">(</span><span class="sa">f</span><span class="s2">&quot;gain block </span><span
+        class="si">{</span><span class="n">block</span><span class="o">.</span><span class="n">offset</span><span
+        class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">REQUEST_SIZE</span><span
+        class="si">}</span><span class="s2"> for piece </span><span class="si">{</span><span class="n">block</span><span
+        class="o">.</span><span class="n">piece</span><span class="si">}</span><span
+        class="s2"> successfully&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Connection.stop">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.connection.Connection.stop">[docs]</a>
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span
+        class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        停止</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span class="o">.</span><span
+        class="n">append</span><span class="p">(</span><span class="n">STOPPED</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">future</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">future</span><span
+        class="o">.</span><span class="n">cancel</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Connection.cancel">
+<a class="viewcode-back" href="../../../src.torrent.html#src.torrent.connection.Connection.cancel">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">cancel</span><span class="p">(</span><span
+        class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        cancel 等待所有资源被释放完</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span
+        class="sa">f</span><span class="s2">&quot;Closing peer </span><span class="si">{</span><span
+        class="bp">self</span><span class="o">.</span><span class="n">remote_id</span><span class="si">}</span><span
+        class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">future</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">future</span><span
+        class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">future</span>
+            <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span
+        class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span
+        class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span
+        class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">writer</span><span class="o">.</span><span class="n">wait_closed</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span
+        class="n">task_done</span><span class="p">()</span></div>
+
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_start</span><span class="p">(</span><span
+        class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;实现和Peer的通信,交流,数据传输,数据解析</span>
+
+<span class="sd">        :raise: (ConnectionRefusedError, TimeoutError):Unable to connect to peer</span>
+<span class="sd">        :raise: (ConnectionResetError, CancelledError):Connection closed</span>
+<span class="sd">        :raise: RuntimeError:A runtime error occured</span>
+<span class="sd">        :raise Exception:An unknown error occurred</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">while</span> <span class="n">STOPPED</span> <span class="ow">not</span> <span
+        class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span
+        class="p">:</span>
+            <span class="n">ip</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span
+        class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span
+        class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span
+        class="p">(</span><span class="sa">f</span><span class="s2">&quot;Got assigned peer with </span><span
+        class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span
+        class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span
+        class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># self.reader, self.writer = await asyncio.open_connection(ip, port)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">reader</span><span
+        class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">writer</span> <span
+        class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span
+        class="n">wait_for</span><span class="p">(</span><span class="n">asyncio</span><span class="o">.</span><span
+        class="n">open_connection</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span
+        class="n">port</span><span class="p">),</span>
+                                                                  <span class="n">timeout</span><span class="o">=</span><span
+        class="n">TIME_OUT</span><span class="p">)</span>  <span class="c1"># 设置最大等待时间为5s</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span
+        class="p">(</span><span class="sa">f</span><span class="s2">&quot;Connecting to peer </span><span
+        class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span
+        class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span
+        class="p">)</span>
+                <span class="n">buffer</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span
+        class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="bp">self</span><span
+        class="o">.</span><span class="n">_handshake</span><span class="p">(),</span> <span
+        class="n">timeout</span><span class="o">=</span><span class="n">TIME_OUT</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span
+        class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CHOKED</span><span
+        class="p">)</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span
+        class="p">(</span><span class="bp">self</span><span class="o">.</span><span
+        class="n">_send_interested</span><span class="p">(),</span> <span class="n">timeout</span><span
+        class="o">=</span><span class="n">TIME_OUT</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span
+        class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">INTERESTED</span><span
+        class="p">)</span>
+                <span class="k">async</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span
+        class="n">PeerStreamIterator</span><span class="p">(</span><span class="bp">self</span><span
+        class="o">.</span><span class="n">reader</span><span class="p">,</span> <span class="n">buffer</span><span
+        class="p">):</span>
+                    <span class="k">if</span> <span class="n">STOPPED</span> <span class="ow">in</span> <span
+        class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span class="p">:</span>
+                        <span class="k">break</span>
+                    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">BitField</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">piece_manager</span><span
+        class="o">.</span><span class="n">add_peer</span><span class="p">(</span><span class="bp">self</span><span
+        class="o">.</span><span class="n">remote_id</span><span class="p">,</span> <span class="n">message</span><span
+        class="o">.</span><span class="n">bitfield</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">Interested</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">peer_state</span><span
+        class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">INTERESTED</span><span
+        class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">NotInterested</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">INTERESTED</span> <span class="ow">in</span> <span
+        class="bp">self</span><span class="o">.</span><span class="n">peer_state</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">peer_state</span><span
+        class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">INTERESTED</span><span
+        class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">Choke</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span
+        class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CHOKED</span><span
+        class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">UnChoke</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">CHOKED</span> <span class="ow">in</span> <span
+        class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span
+        class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">CHOKED</span><span
+        class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">Have</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">piece_manager</span><span
+        class="o">.</span><span class="n">update_peer</span><span class="p">(</span><span class="bp">self</span><span
+        class="o">.</span><span class="n">remote_id</span><span class="p">,</span> <span class="n">message</span><span
+        class="o">.</span><span class="n">index</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">KeepAlive</span><span class="p">:</span>
+                        <span class="k">pass</span>
+                    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">Piece</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span
+        class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">PENDING</span><span
+        class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">on_block_cb</span><span
+        class="p">(</span>
+                            <span class="n">peer_id</span><span class="o">=</span><span class="bp">self</span><span
+        class="o">.</span><span class="n">remote_id</span><span class="p">,</span>
+                            <span class="n">piece_index</span><span class="o">=</span><span
+        class="n">message</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+                            <span class="n">block_offset</span><span class="o">=</span><span
+        class="n">message</span><span class="o">.</span><span class="n">begin</span><span class="p">,</span>
+                            <span class="n">data</span><span class="o">=</span><span class="n">message</span><span
+        class="o">.</span><span class="n">block</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">Request</span><span class="p">:</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span
+        class="p">(</span><span class="s1">&#39;Ignoring the received Request message.&#39;</span><span
+        class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">message</span><span
+        class="p">)</span> <span class="ow">is</span> <span class="n">Cancel</span><span class="p">:</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span
+        class="p">(</span><span class="s1">&#39;Ignoring the received Cancel message.&#39;</span><span
+        class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">CHOKED</span> <span class="ow">not</span> <span
+        class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span
+        class="p">:</span>
+                        <span class="k">if</span> <span class="n">INTERESTED</span> <span class="ow">in</span> <span
+        class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="n">PENDING</span> <span class="ow">not</span> <span
+        class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span
+        class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">my_state</span><span
+        class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">PENDING</span><span
+        class="p">)</span>
+                                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span
+        class="n">wait_for</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span
+        class="n">_next_request</span><span class="p">(),</span> <span class="n">timeout</span><span
+        class="o">=</span><span class="n">TIME_OUT</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="n">ProtocolError</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span
+        class="p">(</span><span class="s2">&quot;protocol error&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ConnectionRefusedError</span><span
+        class="p">,</span> <span class="ne">TimeoutError</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span
+        class="p">(</span><span class="s1">&#39;Unable to connect to peer&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ConnectionResetError</span><span
+        class="p">,</span> <span class="n">CancelledError</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span
+        class="p">(</span><span class="s1">&#39;Connection closed&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span
+        class="p">(</span><span class="s2">&quot;A runtime error occured&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span
+        class="p">(</span><span class="s1">&#39;An unknown error occurred&#39;</span><span class="p">)</span>
+                <span class="c1"># await self.cancel()</span>
+                <span class="c1"># raise e</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span
+        class="n">cancel</span><span class="p">()</span></div>
+
+</pre>
+                        </div>
+
+                    </div>
+                </div>
+                <footer>
+
+                    <hr/>
+
+                    <div role="contentinfo">
+                        <p>&#169; Copyright 2023, 郑卯杨.</p>
+                    </div>
+
+                    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+                    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+                    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+                </footer>
+            </div>
+        </div>
+    </section>
+</div>
+<script>
+    jQuery(function () {
+        SphinxRtdTheme.Navigation.enable(true);
+    });
+</script>
+
+</body>
+</html>
