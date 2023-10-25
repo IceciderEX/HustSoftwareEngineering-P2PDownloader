@@ -2,26 +2,23 @@ import asyncio
 import logging
 import signal
 from asyncio import CancelledError
+
 from src.torrent.client import TorrentClient
 from src.torrent.torrent import Torrent
 
 
-async def main():
+def download(torrentfile: str):
+    """
+    下载开始接口，在实现图形化界面时可多次调用，建议设置过最大同时下载数为3
+    :param torrentfile: .Torrent文件路径
+    :return:
+    """
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s: %(message)s',
                         datefmt='%Y/%m/%d %I:%M:%S %p')
-    client = TorrentClient(Torrent("file/How.to.Read.People.Like.a.Book.by.James.W..Williams.EPUB.torrent"))
     loop = asyncio.get_event_loop()
+    client = TorrentClient(Torrent(torrentfile))
     task = loop.create_task(client.start())
-    task2 = loop.create_task(client.return_download_time())
-
-    # Pause after 20 seconds
-    await asyncio.sleep(20)
-    client.pause()
-
-    # Restart after 30 seconds
-    await asyncio.sleep(10)
-    client.restart()
 
     def signal_handler(*_):
         logging.info('Exiting, please wait until everything is shutdown...')
@@ -31,11 +28,7 @@ async def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
-        await task
-        await task2
+        loop.run_until_complete(task)
     except CancelledError:
         logging.warning('Event loop was canceled')
 
-
-if __name__ == '__main__':
-    asyncio.run(main())

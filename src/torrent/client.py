@@ -16,7 +16,7 @@ from src.torrent.connection import Connection
     @version 1.0
     
     该模块集成了所有模块,真正地开始下载
-    封装了TorrentClient类,使用start()开始下载,stop()停止下载
+    封装了TorrentClient类,使用start()开始下载,stop()取消下载，pause()暂停下载，restart()继续下载
 """
 
 MAX_PEER_CONNECTIONS = 516
@@ -32,6 +32,7 @@ class TorrentClient:
         self.peers: List[Connection] = []
         self.piece_manager = PieceManager(torrent)
         self.abort = False
+        self.paused = False
         self.before_time = None
         self.before_bytes = None
         self.first_connect = True
@@ -44,7 +45,6 @@ class TorrentClient:
         self.abort = True
         for peer in self.peers:
             peer.stop()
-        self.piece_manager.close()
         for tracker in self.trackers:
             tracker.close()
 
@@ -76,7 +76,9 @@ class TorrentClient:
             if self.abort:
                 logging.info('Aborting download...')
                 break
-
+            if self.paused:
+                await asyncio.sleep(0.5)
+                continue
             current = round(time.time())
             tracker_tasks = []
             responses = []
@@ -120,7 +122,7 @@ class TorrentClient:
                         index += 1
             except ConnectionError:
                 logging.info("UDP unable to connect")
-            await asyncio.sleep(30)
+            await asyncio.sleep(12)
         self.stop()
 
     def update_download_speed(self):
@@ -164,3 +166,30 @@ class TorrentClient:
             if peer.alive:
                 count += 1
         return count
+
+    def find_download_place(self, pah: str):
+        """
+        指定下载位置
+        :return:无
+        """
+        self.piece_manager.download_place(str)
+
+    def pause(self):
+        """
+        暂停下载
+        :return: 无
+        """
+        self.paused = True
+        for peer in self.peers:
+            peer.pause()
+        logging.info(f'Download Paused')
+
+    def restart(self):
+        """
+        继续下载
+        :return: 无
+        """
+        self.paused = False
+        for peer in self.peers:
+            peer.restart()
+        logging.info(f'Download Restarted')

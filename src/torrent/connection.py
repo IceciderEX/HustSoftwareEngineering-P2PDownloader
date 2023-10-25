@@ -236,6 +236,7 @@ STOPPED = "stopped"
 CHOKED = "choked"
 INTERESTED = "interested"
 PENDING = 'pending_request'
+PAUSED = "paused"
 
 TIME_OUT = 5
 
@@ -244,6 +245,7 @@ class Connection:
     """
     Connection是执行通信任务的最小单元,通过封装为协程来实现任务队列的自动管理调用
     """
+    PAUSE_TIME = 3600  # 一小时
 
     def __init__(self, queue: Queue, info_hash: bytes,
                  peer_id: bytes, piece_manager: PieceManager,
@@ -259,10 +261,11 @@ class Connection:
         self.sock = None
         self.piece_manager = piece_manager
         self.on_block_cb = on_block_cb  # 接收到Block数据时的回调函数
-        self.future = asyncio.ensure_future(self._start())  # 协程任务，在Connection对象创建后立即执行
+        self.future = asyncio.ensure_future(self._start())  # 协程任务
         self.ip = None
         self.port = None
         self.alive = False
+        self.pause_event = asyncio.Event()
         self.use_udp = False
 
     async def _handshake(self) -> bytes:
@@ -390,6 +393,8 @@ class Connection:
                     async for message in PeerStreamIterator(self.reader, buffer):  # 解析消息
                         if STOPPED in self.my_state:
                             break
+                        if PAUSED in self.my_state:
+                            await self.pause_event.wait()  # 暂停时等待暂停事件
                         if type(message) is BitField:
                             self.piece_manager.add_peer(self.remote_id, message.bitfield)
                         elif type(message) is Interested:
@@ -475,3 +480,12 @@ class Connection:
                 # await self.cancel()
                 # raise e
             await self.cancel()
+
+    def pause(self):
+        self.my_state.append(PAUSED)
+        self.pause_event.clear()
+
+    def restart(self):
+        if PAUSED in self.my_state:
+            self.my_state.remove(PAUSED)
+            self.pause_event.set()

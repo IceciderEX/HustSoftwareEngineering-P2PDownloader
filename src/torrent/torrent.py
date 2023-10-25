@@ -34,9 +34,7 @@ class Torrent:
             # 再由sha1加密算法得到infohash(string)
             self.info_hash: bytes = sha1(info_hash).digest()  # str size = 20
             self.info_bytes = info_hash
-            if b'files' in self.meta_info[b'info']:
-                raise RuntimeError("Do not support multiple files now!")
-            logging.info(f"announce={self.trackers}")
+            logging.info(f"announce={self.meta_info[b'announce'].decode('utf-8')}")
 
     @property
     def announce(self) -> str:
@@ -48,7 +46,7 @@ class Torrent:
     @property
     def length(self) -> int:
         """
-        :return: 返回 下载文件的总大小
+        :return: 返回 单文件下载时下载文件的总大小
         """
         return self.meta_info[b'info'][b'length']
 
@@ -78,6 +76,9 @@ class Torrent:
         """
         :return: 返回要下载的文件的名字
         """
+        return self.get_name()
+
+    def get_name(self) -> str:
         return self.meta_info[b'info'][b'name'].decode('utf-8')
 
     @property
@@ -91,3 +92,25 @@ class Torrent:
             return [self.meta_info[b'announce'].decode('utf-8')]
         else:
             return []
+
+    def is_multi_file(self) -> bool:
+        """
+        判断是否为多文件
+        :return: true or false
+        """
+        return b'files' in self.meta_info[b'info']
+
+    def get_files(self):
+        """
+        :return: 文件信息列表
+        """
+        if self.is_multi_file():
+            files = self.meta_info[b'info'][b'files']
+            file_list = []
+            for file_info in files:
+                path = [item.decode('utf-8') for item in file_info[b'path']]
+                length = file_info[b'length']
+                file_list.append({'path': path, 'length': length})
+            return file_list
+        else:
+            return [{'path': [self.get_name()], 'length': self.length}]
