@@ -66,7 +66,7 @@ class TorrentClient:
                       for _ in range(MAX_PEER_CONNECTIONS)]
 
         previous = None
-        interval = 1  # Tracker服务器通信的默认间隔
+        interval = 30 * 60  # Tracker服务器通信的默认间隔
         i = 1
         first_connect = True
 
@@ -101,7 +101,7 @@ class TorrentClient:
                                     uploaded=0,
                                     downloaded=self.piece_manager.bytes_downloaded
                                 ),
-                                timeout=5 # Timeout set to 5 seconds
+                                timeout=8 # Timeout set to 5 seconds
                             )
                         )
                         tracker_tasks.append(task)
@@ -113,7 +113,7 @@ class TorrentClient:
                     # Wait for all tracker requests to complete concurrently
                 responses = await asyncio.gather(*tracker_tasks, return_exceptions=True)
             except (ConnectionError, TimeoutError):
-                logging.info("UDP unable to connect")
+                logging.info("Tracker unable to connect")
 
             # Wait for all tracker requests to complete concurrently
             try:
@@ -136,7 +136,7 @@ class TorrentClient:
                         index += 1
             except ConnectionError:
                 logging.info("UDP unable to connect")
-            await asyncio.sleep(7)
+            await asyncio.sleep(30)
         self.stop()
 
     def update_download_speed(self):

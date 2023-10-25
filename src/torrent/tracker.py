@@ -140,6 +140,7 @@ class Tracker:
                 self.sock.sendto(connect_request)
                 datagram, remote_addr = await self.sock.recvfrom()
 
+
                 action, transaction_id, connection_id = struct.unpack('>IIQ', datagram)
                 if not action == 0 and not transaction_id == 99:
                     raise ConnectionError('Unable to connect to tracker')

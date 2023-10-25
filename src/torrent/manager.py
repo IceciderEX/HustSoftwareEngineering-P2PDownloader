@@ -40,7 +40,7 @@ class PieceManager:
         self.missing_pieces: List[Piece] = []
         self.ongoing_pieces: List[Piece] = []
         self.have_pieces: List[Piece] = []
-        self.max_pending_time = 120  # 2分钟
+        self.max_pending_time = 20  # 1分钟
         self.total_pieces = len(torrent.pieces)
         self.fd = os.open(self.torrent.name, os.O_RDWR | os.O_CREAT)  # 在当前目录下创建下载的文件
         self.missing_pieces: List[Piece] = self._init_pieces()
@@ -120,11 +120,12 @@ class PieceManager:
         """
         current = round(time.time())
         for request in self.pending_blocks:
-            if self.peers[peer_id][request.block.piece]:
-                if request.added + self.max_pending_time < current:
-                    logging.info(f"Re-requesting block {request.block.offset} for piece {request.block.piece}")
-                    request.added = current
-                    return request.block
+            if request.block is not None:
+                if self.peers[peer_id][request.block.piece]:
+                    if request.added + self.max_pending_time < current:
+                        logging.info(f"Re-requesting block {request.block.offset} for piece {request.block.piece}")
+                        request.added = current
+                        return request.block
         return None
 
     def _next_ongoing(self, peer_id: bytes) -> Optional[Block]:
@@ -185,6 +186,8 @@ class PieceManager:
 
         :return: 符合条件的Block 或 None
         """
+        if len(self.have_pieces) == 300:
+            i = 1
 
         if peer_id not in self.peers:
             return None
@@ -195,6 +198,11 @@ class PieceManager:
                 rarest_piece = self._get_rarest_piece(peer_id)
                 if rarest_piece:
                     block = rarest_piece.next_request()
+        if block:
+            block.time = round(time.time())
+            logging.info(f"next request is {block.offset / REQUEST_SIZE} of piece {block.piece}")
+        else:
+            logging.info(f"next request is None, totally download {len(self.have_pieces)} / {self.total_pieces}")
         return block
 
     def block_received(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes) -> None:
@@ -207,7 +215,8 @@ class PieceManager:
         """
         self.block_download_bytes += 16384
 
-        logging.debug(f"Received block {block_offset} for piece {piece_index} from peer {peer_id}: ")
+        logging.info(f"Received block {block_offset / REQUEST_SIZE} for piece {piece_index} from peer {peer_id}: ")
+        logging.info(self.show_info())
         for index, request in enumerate(self.pending_blocks):
             if request.block.piece == piece_index and request.block.offset == block_offset:
                 del self.pending_blocks[index]
@@ -216,13 +225,14 @@ class PieceManager:
         pieces = [p for p in self.ongoing_pieces if p.index == piece_index]
         piece = pieces[0] if pieces else None
         if piece:
-            piece.block_received(block_offset, data)
+            piece.block_received(block_offset, data)  # 调用 piece.py 的 line71
             if piece.finished():
                 if piece.match():
                     self._write(piece)
                     self.ongoing_pieces.remove(piece)
                     self.have_pieces.append(piece)
                     logging.info(
+                        f"{piece.index} complete, "
                         f"{len(self.have_pieces)} / {self.total_pieces} pieces download "
                         f"{(len(self.have_pieces) / self.total_pieces * 100):.3f} %")
                 else:
@@ -231,3 +241,16 @@ class PieceManager:
                     piece.reset()
         else:
             logging.warning("Trying to update piece that is not ongoing")
+
+    def show_info(self):
+
+        str_info = '\nongoing:'
+        for piece in self.ongoing_pieces:
+            str_info += str(piece.index) + ','
+        str_info += '\n missing:'
+        for piece in self.missing_pieces:
+            str_info += str(piece.index) + ','
+        str_info += '\n have:'
+        for piece in self.have_pieces:
+            str_info += str(piece.index) + ','
+        return str_info

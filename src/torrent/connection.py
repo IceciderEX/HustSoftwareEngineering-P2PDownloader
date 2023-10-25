@@ -77,10 +77,10 @@ class PeerStreamIterator:
         :return: 根据Peer回传的信息解码并封装成不同的Message类
         """
 
-        header_length = 4
+        header_length = 4  # 标识长度
 
         if len(self.buffer) > 4:
-            message_length = struct.unpack('>I', self.buffer[:4])[0]
+            message_length = struct.unpack('>I', self.buffer[:4])[0]  # 消息长度，不包括这4个头部字节
             if message_length == 0:
                 return KeepAlive()
             if len(self.buffer) >= message_length:
@@ -90,7 +90,8 @@ class PeerStreamIterator:
                 def _data():
                     return self.buffer[:header_length + message_length]
 
-                msg_id = struct.unpack('>b', self.buffer[4:5])[0]
+                msg_id = struct.unpack('>b', self.buffer[4:5])[0]  # 消息id的一个字节
+
                 if msg_id == MsgId.Choke:
                     _consume()
                     return Choke()
@@ -236,7 +237,7 @@ CHOKED = "choked"
 INTERESTED = "interested"
 PENDING = 'pending_request'
 
-TIME_OUT = 12
+TIME_OUT = 5
 
 
 class Connection:
@@ -293,7 +294,7 @@ class Connection:
             # Wait for the handshake response
             data, _ = await self.sock.recvfrom()
             if not data.startswith(b'\x13BitTorrent protocol'):
-                print('Handshake failed.')
+                print('Handshake failed in udp.')
             # 超时处理
             return data[HandShake.length:]
 
@@ -317,14 +318,14 @@ class Connection:
         if block:
             message = Request(block.piece, block.offset, block.length)
 
-            logging.debug(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
+            logging.info(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
                           f'of {block.length} bytes from peer {self.remote_id}')
             if not self.use_udp:
                 self.writer.write(message.encode())
                 await self.writer.drain()
             else:
                 self.sock.sendto(message.encode())
-            logging.debug(f"gain block {block.offset / REQUEST_SIZE} for piece {block.piece} successfully")
+            # logging.info(f"gain block {block.offset / REQUEST_SIZE} for piece {block.piece} successfully")
 
     def stop(self):
         """
@@ -369,7 +370,7 @@ class Connection:
             ip, port, use_udp = await self.queue.get()
             if ip == '255.255.255.255' or ip == '0.0.0.0':  # 广播IP
                 continue
-            logging.debug(f"Got assigned peer with {ip}:{port}")
+            # logging.info(f"Got assigned peer with {ip}:{port}")
             try:
                 if use_udp:
                     self.ip = ip
@@ -380,7 +381,7 @@ class Connection:
                 else:
                     self.reader, self.writer = await asyncio.wait_for(asyncio.open_connection(ip, port),
                                                                       timeout=TIME_OUT)  # 设置最大等待时间为5s
-                logging.debug(f"Connecting to peer {ip}:{port}")
+                # logging.info(f"Connecting to peer {ip}:{port}")
                 buffer = await asyncio.wait_for(self._handshake(), timeout=TIME_OUT)
                 self.my_state.append(CHOKED)
                 await asyncio.wait_for(self._send_interested(), timeout=TIME_OUT)
@@ -463,11 +464,12 @@ class Connection:
             except ProtocolError:
                 logging.exception("protocol error")
             except (ConnectionRefusedError, TimeoutError):
-                logging.warning(f'Unable to connect to peer: {ip}:{port}')
+                pass
+                # logging.warning(f'Unable to connect to peer: {ip}:{port}')
             except (ConnectionResetError, CancelledError):
                 logging.warning('Connection closed')
             except RuntimeError:
-                logging.warning("A runtime error occured")
+                logging.debug("A runtime error occured")
             except OSError:
                 logging.warning("指定的网络名格式无效/信号灯超时")
             except Exception:
