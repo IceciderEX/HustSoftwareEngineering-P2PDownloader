@@ -19,7 +19,7 @@ from src.torrent.connection import Connection
     封装了TorrentClient类,使用start()开始下载,stop()停止下载
 """
 
-MAX_PEER_CONNECTIONS = 5160
+MAX_PEER_CONNECTIONS = 516
 
 
 class TorrentClient:
@@ -68,7 +68,6 @@ class TorrentClient:
         previous = None
         interval = 30 * 60  # Tracker服务器通信的默认间隔
         i = 1
-        first_connect = True
 
         while True:
             if self.piece_manager.finished:
@@ -79,13 +78,8 @@ class TorrentClient:
                 break
 
             current = round(time.time())
-
-            # List to store tasks for each tracker request
             tracker_tasks = []
-
-            # Iterate through each tracker and create a task for each request
             responses = []
-
             try:
                 for tracker in self.trackers:
                     if tracker.can_connect:
@@ -93,7 +87,6 @@ class TorrentClient:
                         logging.info(f"向tracker服务器{tracker.announce}发送第{i}次请求")
                         i += 1
                         no_interval = True
-                        # Create a task for each tracker request
                         task = asyncio.create_task(
                             asyncio.wait_for(
                                 tracker.connect(
@@ -101,30 +94,21 @@ class TorrentClient:
                                     uploaded=0,
                                     downloaded=self.piece_manager.bytes_downloaded
                                 ),
-                                timeout=8 # Timeout set to 5 seconds
+                                timeout=8  # 设置tracker的最长相应时间为8s，超过不再连接
                             )
                         )
                         tracker_tasks.append(task)
-
-                    # if not no_interval:
-                    #     logging.info("client sleep 5s")
-                    #     await asyncio.sleep(5)
-
-                    # Wait for all tracker requests to complete concurrently
-                responses = await asyncio.gather(*tracker_tasks, return_exceptions=True)
+                responses = await asyncio.gather(*tracker_tasks, return_exceptions=True)  # 等待所有的tracker返回response
             except (ConnectionError, TimeoutError):
                 logging.info("Tracker unable to connect")
 
-            # Wait for all tracker requests to complete concurrently
             try:
                 index = 0
                 for response in responses:
                     if response:
-                        if isinstance(response, TimeoutError):
-                            # Handle TimeoutError, e.g., log the error
+                        if isinstance(response, TimeoutError):  # 超时
                             logging.warning("A tracker request timed out.")
-                        elif isinstance(response, Exception):
-                            # Handle other exceptions, e.g., log the error
+                        elif isinstance(response, Exception):  # 其他错误
                             logging.error(f"An error occurred in a tracker request: {response}")
                         else:
                             tracker = self.trackers[index]
@@ -141,7 +125,7 @@ class TorrentClient:
 
     def update_download_speed(self):
         """
-             返回当前下载速度
+             返回当前的下载速度
         """
         now_time = time.time()
         now_bytes = self.piece_manager.block_download_bytes

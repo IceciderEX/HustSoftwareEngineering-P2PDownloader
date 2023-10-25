@@ -80,6 +80,10 @@ class TrackerResponse:
 
 
 def _calculate_peer_id():
+    """
+    返回标识自己的peer id
+    :return:
+    """
     return '-PC0223-' + ''.join([str(random.randint(0, 9)) for _ in range(12)])
 
 
@@ -110,7 +114,7 @@ class Tracker:
         self.use_udp = announce.startswith("udp")
         self.announce = announce
         self.previous = 0
-        self.can_connect = True
+        self.can_connect = True  # 标识第一次连接是否成功
 
     async def connect(self, first: bool = False, downloaded: int = 0, uploaded: int = 0) -> TrackerResponse:
         """根据announce的类型来决定是使用http协议还是udp协议
@@ -123,8 +127,6 @@ class Tracker:
         """
         if self.use_udp:
             try:
-                if self.announce == 'udp://torrent.gresille.org:80/announce':
-                    x = 1
                 self.can_connect = True
                 match = re.search(r'udp://([^:/]+:\d+)/', self.announce)
                 if match:
@@ -139,8 +141,6 @@ class Tracker:
                 connect_request = struct.pack('>QII', 0x41727101980, 0, 99)
                 self.sock.sendto(connect_request)
                 datagram, remote_addr = await self.sock.recvfrom()
-
-
                 action, transaction_id, connection_id = struct.unpack('>IIQ', datagram)
                 if not action == 0 and not transaction_id == 99:
                     raise ConnectionError('Unable to connect to tracker')
@@ -160,7 +160,6 @@ class Tracker:
                     -1,  # num want -1 default
                     random.randint(6000, 18888)  # Port
                 )
-                # print("announce request")
                 self.sock.sendto(announce_request)
                 datagram, remote_addr = await self.sock.recvfrom()
                 action, transaction_id, interval, leechers, seeders = struct.unpack('>IIIII', datagram[:20])
@@ -177,7 +176,7 @@ class Tracker:
                              b"seeders": seeders, b"peers": datagram[20:]}
                 return TrackerResponse(dict_data, True)
             except Exception as e:
-                logging.info(f"Unable to connect to udp tracker:{self.announce,e}")
+                logging.info(f"Unable to connect to udp tracker:{self.announce, e}")
                 self.can_connect = False
         else:
             if self.http_client is None:
@@ -185,7 +184,7 @@ class Tracker:
             params = {
                 'info_hash': self.torrent.info_hash,
                 'peer_id': self.peer_id,
-                #'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
+                # 'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
                 'port': 6881,
                 'uploaded': uploaded,
                 'downloaded': downloaded,
@@ -217,4 +216,3 @@ class Tracker:
 
     def update_previous(self, current):
         self.previous = current
-

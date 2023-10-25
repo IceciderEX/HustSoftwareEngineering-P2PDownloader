@@ -186,9 +186,6 @@ class PieceManager:
 
         :return: 符合条件的Block 或 None
         """
-        if len(self.have_pieces) == 300:
-            i = 1
-
         if peer_id not in self.peers:
             return None
         block = self._expired_requests(peer_id)
@@ -215,8 +212,8 @@ class PieceManager:
         """
         self.block_download_bytes += 16384
 
-        logging.info(f"Received block {block_offset / REQUEST_SIZE} for piece {piece_index} from peer {peer_id}: ")
-        logging.info(self.show_info())
+        logging.debug(f"Received block {block_offset / REQUEST_SIZE} for piece {piece_index} from peer {peer_id}: ")
+        # logging.info(self.show_info())
         for index, request in enumerate(self.pending_blocks):
             if request.block.piece == piece_index and request.block.offset == block_offset:
                 del self.pending_blocks[index]
@@ -243,7 +240,10 @@ class PieceManager:
             logging.warning("Trying to update piece that is not ongoing")
 
     def show_info(self):
-
+        """
+        显示当前ongoing_pieces, missing_pieces, have_pieces的相关信息
+        :return:
+        """
         str_info = '\nongoing:'
         for piece in self.ongoing_pieces:
             str_info += str(piece.index) + ','

@@ -318,14 +318,13 @@ class Connection:
         if block:
             message = Request(block.piece, block.offset, block.length)
 
-            logging.info(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
+            logging.debug(f'Requesting block {block.offset / REQUEST_SIZE} for piece {block.piece} '
                           f'of {block.length} bytes from peer {self.remote_id}')
             if not self.use_udp:
                 self.writer.write(message.encode())
                 await self.writer.drain()
             else:
                 self.sock.sendto(message.encode())
-            # logging.info(f"gain block {block.offset / REQUEST_SIZE} for piece {block.piece} successfully")
 
     def stop(self):
         """
@@ -370,7 +369,7 @@ class Connection:
             ip, port, use_udp = await self.queue.get()
             if ip == '255.255.255.255' or ip == '0.0.0.0':  # 广播IP
                 continue
-            # logging.info(f"Got assigned peer with {ip}:{port}")
+            logging.info(f"Got assigned peer with {ip}:{port}")
             try:
                 if use_udp:
                     self.ip = ip
@@ -381,14 +380,14 @@ class Connection:
                 else:
                     self.reader, self.writer = await asyncio.wait_for(asyncio.open_connection(ip, port),
                                                                       timeout=TIME_OUT)  # 设置最大等待时间为5s
-                # logging.info(f"Connecting to peer {ip}:{port}")
+                logging.info(f"Connecting to peer {ip}:{port}")
                 buffer = await asyncio.wait_for(self._handshake(), timeout=TIME_OUT)
                 self.my_state.append(CHOKED)
                 await asyncio.wait_for(self._send_interested(), timeout=TIME_OUT)
                 self.my_state.append(INTERESTED)
                 self.alive = True
                 if not self.use_udp:
-                    async for message in PeerStreamIterator(self.reader, buffer):
+                    async for message in PeerStreamIterator(self.reader, buffer):  # 解析消息
                         if STOPPED in self.my_state:
                             break
                         if type(message) is BitField:
@@ -464,8 +463,7 @@ class Connection:
             except ProtocolError:
                 logging.exception("protocol error")
             except (ConnectionRefusedError, TimeoutError):
-                pass
-                # logging.warning(f'Unable to connect to peer: {ip}:{port}')
+                logging.warning(f'Unable to connect to peer: {ip}:{port}')
             except (ConnectionResetError, CancelledError):
                 logging.warning('Connection closed')
             except RuntimeError:
