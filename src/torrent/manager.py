@@ -40,7 +40,7 @@ class PieceManager:
         self.missing_pieces: List[Piece] = []
         self.ongoing_pieces: List[Piece] = []
         self.have_pieces: List[Piece] = []
-        self.max_pending_time = 120  # 2分钟
+        self.max_pending_time = 20  # 1分钟
         self.total_pieces = len(torrent.pieces)
         self.missing_pieces: List[Piece] = self._init_pieces()
         self.block_download_bytes = 0
@@ -68,7 +68,6 @@ class PieceManager:
                     blocks[-1].length = last_piece_len % REQUEST_SIZE
             pieces.append(Piece(index, blocks, hash_value))
         return pieces
-
 
     @property
     def finished(self) -> bool:
@@ -115,11 +114,12 @@ class PieceManager:
         """
         current = round(time.time())
         for request in self.pending_blocks:
-            if self.peers[peer_id][request.block.piece]:
-                if request.added + self.max_pending_time < current:
-                    logging.info(f"Re-requesting block {request.block.offset} for piece {request.block.piece}")
-                    request.added = current
-                    return request.block
+            if request.block is not None:
+                if self.peers[peer_id][request.block.piece]:
+                    if request.added + self.max_pending_time < current:
+                        logging.info(f"Re-requesting block {request.block.offset} for piece {request.block.piece}")
+                        request.added = current
+                        return request.block
         return None
 
     def _next_ongoing(self, peer_id: bytes) -> Optional[Block]:
@@ -166,46 +166,54 @@ class PieceManager:
         将一个Piece对应的全部数据写到文件,支持单文件和多文件
         :param piece: Piece
         """
-        current_file_index = 0   # 用于跟踪当前文件的索引
+        current_file_index = 0  # 用于跟踪当前文件的索引
         current_file_offset = 0  # 用于跟踪当前文件的偏移量
-        file_path = ''           # 当前文件的路径
+        file_path = ''  # 当前文件的路径
         remaining_piece_data = piece.data
-
-        for file_info in self.files:
-            file_path_parts = [self.d_path] + file_info['path']
-            file_path = os.path.join(*file_path_parts)
-            file_length = file_info['length']
-            current_file_offset += file_length
-            if current_file_offset <= piece.index * self.torrent.piece_length:
-                continue
-
-        # 计算当前文件空余的长度
-        available_file_space = current_file_offset - piece.index * self.torrent.piece_length
-        if available_file_space >= self.torrent.piece_length:
-            write_data = remaining_piece_data
-        else:
-            write_data = remaining_piece_data[:available_file_space]
-            # 更新下一文件待写入数据
-            remaining_piece_data = remaining_piece_data[available_file_space:]
-            # 如果当前文件已满，继续向后面文件写完pieces
-            file_info1 = self.files[current_file_index]
-            if file_info1['length'] >= self.torrent.piece_length - available_file_space:
-                with open(file_info1['path'], 'ab') as file:
-                    file.write(remaining_piece_data)
+        if self.torrent.is_multi_file():
+            for file_info in self.files:
+                file_path_parts = [self.d_path] + file_info['path']
+                file_path = os.path.join(*file_path_parts)
+                file_length = file_info['length']
+                current_file_offset += file_length
+                if current_file_offset <= piece.index * self.torrent.piece_length:
+                    continue
+            # 计算当前文件空余的长度
+            available_file_space = current_file_offset - piece.index * self.torrent.piece_length
+            if available_file_space >= self.torrent.piece_length:
+                write_data = remaining_piece_data
             else:
-                while file_info1['length'] < self.torrent.piece_length - available_file_space:
+                write_data = remaining_piece_data[:available_file_space]
+                # 更新下一文件待写入数据
+                remaining_piece_data = remaining_piece_data[available_file_space:]
+                # 如果当前文件已满，继续向后面文件写完pieces
+                file_info1 = self.files[current_file_index]
+                if file_info1['length'] >= self.torrent.piece_length - available_file_space:
+                    file_path_parts = [self.d_path] + file_info1['path']
+                    file_path = os.path.join(*file_path_parts)
+                    with open(file_path, 'ab') as file:
+                        file.write(remaining_piece_data)
+                else:
+                    while file_info1['length'] < self.torrent.piece_length - available_file_space:
+                        file_path_parts = [self.d_path] + file_info1['path']
+                        file_path = os.path.join(*file_path_parts)
+                        with open(file_path, 'ab') as file:
+                            file.write(remaining_piece_data[:file_info1['length']])
+                            remaining_piece_data = remaining_piece_data[file_info1['length']:]
+                        available_file_space += file_info1['length']
+                        current_file_index += 1
+                        file_info1 = self.files[current_file_index]
                     with open(file_info1['path'], 'ab') as file:
-                        file.write(remaining_piece_data[:file_info1['length']])
-                        remaining_piece_data = remaining_piece_data[file_info1['length']:]
-                    available_file_space += file_info1['length']
-                    current_file_index += 1
-                    file_info1 = self.files[current_file_index]
-                with open(file_info1['path'], 'ab') as file:
-                    file.write(remaining_piece_data)
-
-        # 打开当前文件并写入数据
-        with open(file_path, 'ab') as file:
-            file.write(write_data)
+                        file.write(remaining_piece_data)
+            # 打开当前文件并写入数据
+            with open(file_path, 'ab') as file:
+                file.write(write_data)
+        else:
+            for file_info in self.files:
+                file_path_parts = [self.d_path] + file_info['path']
+                file_path = os.path.join(*file_path_parts)
+            with open(file_path, 'wb') as file:
+                file.write(piece.data)
 
     def next_request(self, peer_id: bytes) -> Optional[Block]:
         """
@@ -217,7 +225,6 @@ class PieceManager:
 
         :return: 符合条件的Block 或 None
         """
-
         if peer_id not in self.peers:
             return None
         block = self._expired_requests(peer_id)
@@ -227,6 +234,11 @@ class PieceManager:
                 rarest_piece = self._get_rarest_piece(peer_id)
                 if rarest_piece:
                     block = rarest_piece.next_request()
+        if block:
+            block.time = round(time.time())
+            logging.debug(f"next request is {block.offset / REQUEST_SIZE} of piece {block.piece}")
+        else:
+            logging.debug(f"next request is None, totally download {len(self.have_pieces)} / {self.total_pieces}")
         return block
 
     def block_received(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes) -> None:
@@ -239,7 +251,8 @@ class PieceManager:
         """
         self.block_download_bytes += 16384
 
-        logging.debug(f"Received block {block_offset} for piece {piece_index} from peer {peer_id}: ")
+        logging.debug(f"Received block {block_offset / REQUEST_SIZE} for piece {piece_index} from peer {peer_id}: ")
+        # logging.info(self.show_info())
         for index, request in enumerate(self.pending_blocks):
             if request.block.piece == piece_index and request.block.offset == block_offset:
                 del self.pending_blocks[index]
@@ -248,13 +261,14 @@ class PieceManager:
         pieces = [p for p in self.ongoing_pieces if p.index == piece_index]
         piece = pieces[0] if pieces else None
         if piece:
-            piece.block_received(block_offset, data)
+            piece.block_received(block_offset, data)  # 调用 piece.py 的 line71
             if piece.finished():
                 if piece.match():
                     self._write(piece)
                     self.ongoing_pieces.remove(piece)
                     self.have_pieces.append(piece)
                     logging.info(
+                        f"{piece.index} complete, "
                         f"{len(self.have_pieces)} / {self.total_pieces} pieces download "
                         f"{(len(self.have_pieces) / self.total_pieces * 100):.3f} %")
                 else:
@@ -264,9 +278,25 @@ class PieceManager:
         else:
             logging.warning("Trying to update piece that is not ongoing")
 
+    def show_info(self):
+        """
+        显示当前ongoing_pieces, missing_pieces, have_pieces的相关信息
+        :return:
+        """
+        str_info = '\nongoing:'
+        for piece in self.ongoing_pieces:
+            str_info += str(piece.index) + ','
+        str_info += '\n missing:'
+        for piece in self.missing_pieces:
+            str_info += str(piece.index) + ','
+        str_info += '\n have:'
+        for piece in self.have_pieces:
+            str_info += str(piece.index) + ','
+        return str_info
+
     def download_progress(self):
         """
-            下载进度接口
+        下载进度接口
         :return:下载进度
         """
         return len(self.have_pieces) / (self.total_pieces * 100)
@@ -284,4 +314,3 @@ class PieceManager:
             directory = os.path.dirname(file_path)
             if not os.path.exists(directory):
                 os.makedirs(directory)
-

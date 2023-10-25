@@ -3,6 +3,7 @@ from hashlib import sha1
 from typing import List
 
 from src.torrent import bencoding
+import bencodepy
 
 """
     @filename torrent.py
@@ -25,11 +26,12 @@ class Torrent:
         with open(filepath, 'rb') as f:
             meta_info = f.read()  # bytes
             # OrderedDict，包括announce, announce-list, info(name, length, piece length, pieces)...
-            self.meta_info = bencoding.Decode(meta_info).decode()
+            # self.meta_info = bencoding.Decode(meta_info).decode()
+            self.meta_info = bencodepy.decode(meta_info)
 
-            # 由info进行bencode.encode得到info hash(bytes)
+            # 由info进行bencode.encode得到infohash(bytes)
             info_hash = bencoding.Encode(self.meta_info[b'info']).encode()
-            # 再由sha1加密算法得到info hash(string)
+            # 再由sha1加密算法得到infohash(string)
             self.info_hash: bytes = sha1(info_hash).digest()  # str size = 20
             self.info_bytes = info_hash
             logging.info(f"announce={self.meta_info[b'announce'].decode('utf-8')}")
@@ -79,6 +81,18 @@ class Torrent:
     def get_name(self) -> str:
         return self.meta_info[b'info'][b'name'].decode('utf-8')
 
+    @property
+    def trackers(self) -> List[str]:
+        """
+        Return a list of all trackers in the torrent.
+        """
+        if b'announce-list' in self.meta_info:
+            return [url.decode('utf-8') for tier in self.meta_info[b'announce-list'] for url in tier]
+        elif b'announce' in self.meta_info:
+            return [self.meta_info[b'announce'].decode('utf-8')]
+        else:
+            return []
+
     def is_multi_file(self) -> bool:
         """
         判断是否为多文件
@@ -100,4 +114,3 @@ class Torrent:
             return file_list
         else:
             return [{'path': [self.get_name()], 'length': self.length}]
-

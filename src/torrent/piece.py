@@ -1,4 +1,5 @@
 import logging
+import time
 from hashlib import sha1
 from typing import Optional
 
@@ -33,6 +34,7 @@ class Block:
         self.offset = offset
         self.length = length
         self.status = Block.Missing
+        self.time = None
         self.data = None
 
 
@@ -66,6 +68,11 @@ class Piece:
         if missing:
             missing[0].status = Block.Pending
             return missing[0]
+        pending = [b for b in self.blocks if b.status is Block.Pending]  # 防止有些pending blocks卡在队列里
+        cur_time = round(time.time())
+        if pending and cur_time - pending[0].time > 60:
+            pending[0].status = Block.Pending
+            return pending[0]
         return None
 
     def block_received(self, offset: int, data: bytes):

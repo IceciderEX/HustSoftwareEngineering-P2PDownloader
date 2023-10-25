@@ -24,14 +24,18 @@ MAX_PEER_CONNECTIONS = 516
 
 class TorrentClient:
     def __init__(self, torrent: Torrent):
-        self.before_bytes = None
-        self.before_time = None
-        self.tracker = Tracker(torrent)
+        self.trackers = []
+        for tracker in torrent.trackers:
+            self.trackers.append(Tracker(torrent, tracker))
+        self.tracker = Tracker(torrent, torrent.announce)
         self.available_peers = Queue()
         self.peers: List[Connection] = []
+        self.piece_manager = PieceManager(torrent)
         self.abort = False
         self.paused = False
-        self.piece_manager = PieceManager(torrent)
+        self.before_time = None
+        self.before_bytes = None
+        self.first_connect = True
 
     def _empty_queue(self):
         while not self.available_peers.empty():
@@ -41,7 +45,8 @@ class TorrentClient:
         self.abort = True
         for peer in self.peers:
             peer.stop()
-        self.tracker.close()
+        for tracker in self.trackers:
+            tracker.close()
 
     def _on_block_retrieved(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes):
         self.piece_manager.block_received(peer_id, piece_index, block_offset, data)
@@ -52,6 +57,7 @@ class TorrentClient:
 
         当文件被全部下载或中止时停止
         """
+
         self.peers = [Connection(self.available_peers,
                                  self.tracker.torrent.info_hash,
                                  self.tracker.peer_id,
@@ -60,8 +66,9 @@ class TorrentClient:
                       for _ in range(MAX_PEER_CONNECTIONS)]
 
         previous = None
-        interval = 1  # Tracker服务器通信的默认间隔
+        interval = 30 * 60  # Tracker服务器通信的默认间隔
         i = 1
+
         while True:
             if self.piece_manager.finished:
                 logging.info('Torrent fully downloaded!')
@@ -73,29 +80,54 @@ class TorrentClient:
                 await asyncio.sleep(0.5)
                 continue
             current = round(time.time())
-            # if (not previous) or (previous + interval < current) or self.available_peers.empty():
-            if (not previous) or (previous + interval < current) or self.return_peers() < 0:
-                logging.info(f"向tracker服务器发送第{i}次请求")
-                i += 1
-                response = await self.tracker.connect(
-                    first=previous if previous else False,
-                    uploaded=0,
-                    downloaded=self.piece_manager.bytes_downloaded)
+            tracker_tasks = []
+            responses = []
+            try:
+                for tracker in self.trackers:
+                    if tracker.can_connect:
+                    # if ((not tracker.previous) or (tracker.previous + interval < current)) and tracker.can_connect:
+                        logging.info(f"向tracker服务器{tracker.announce}发送第{i}次请求")
+                        i += 1
+                        no_interval = True
+                        task = asyncio.create_task(
+                            asyncio.wait_for(
+                                tracker.connect(
+                                    first=previous if previous else False,
+                                    uploaded=0,
+                                    downloaded=self.piece_manager.bytes_downloaded
+                                ),
+                                timeout=8  # 设置tracker的最长相应时间为8s，超过不再连接
+                            )
+                        )
+                        tracker_tasks.append(task)
+                responses = await asyncio.gather(*tracker_tasks, return_exceptions=True)  # 等待所有的tracker返回response
+            except (ConnectionError, TimeoutError):
+                logging.info("Tracker unable to connect")
 
-                if response:
-                    previous = current
-                    interval = response.interval
-                    self._empty_queue()
-                    for peer in response.peers:
-                        self.available_peers.put_nowait(peer)
-            else:
-                logging.info("client sleep 5s")
-                await asyncio.sleep(5)
+            try:
+                index = 0
+                for response in responses:
+                    if response:
+                        if isinstance(response, TimeoutError):  # 超时
+                            logging.warning("A tracker request timed out.")
+                        elif isinstance(response, Exception):  # 其他错误
+                            logging.error(f"An error occurred in a tracker request: {response}")
+                        else:
+                            tracker = self.trackers[index]
+                            tracker.previous = current
+                            interval = response.interval
+                            self._empty_queue()
+                            for peer in response.peers:
+                                self.available_peers.put_nowait(peer)
+                        index += 1
+            except ConnectionError:
+                logging.info("UDP unable to connect")
+            await asyncio.sleep(12)
         self.stop()
 
     def update_download_speed(self):
         """
-             返回当前下载速度
+             返回当前的下载速度
         """
         now_time = time.time()
         now_bytes = self.piece_manager.block_download_bytes
@@ -115,13 +147,9 @@ class TorrentClient:
         if downloaded_time != 0:
             download_speed = downloaded_bytes / downloaded_time
         show_speed = download_speed / 1024
-        if show_speed >= 1024:
-            show_speed = show_speed / 1024
-            logging.info(f'Download speed: {show_speed:.2f} MB/s')
-            return show_speed
-        else:
-            logging.info(f'Download speed: {show_speed:.2f} KB/s')
-            return show_speed
+        logging.info(f'Peers: {self.return_peers()}')
+        logging.info(f'Download speed: {show_speed:.2f} KB/s')
+        return show_speed
 
     async def return_download_time(self):
         while not self.piece_manager.finished:
@@ -137,7 +165,6 @@ class TorrentClient:
         for peer in self.peers:
             if peer.alive:
                 count += 1
-        logging.info(f'Peers: {count}')
         return count
 
     def find_download_place(self, pah: str):
