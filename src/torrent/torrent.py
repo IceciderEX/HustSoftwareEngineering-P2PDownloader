@@ -46,9 +46,21 @@ class Torrent:
     @property
     def length(self) -> int:
         """
-        :return: 返回 单文件下载时下载文件的总大小
+        :return: 返回 下载时下载文件的总大小
         """
-        return self.meta_info[b'info'][b'length']
+        if b'info' in self.meta_info:
+            info = self.meta_info[b'info']
+            if b'files' in info:
+                # 如果存在多文件信息
+                total_length = 0
+                for file_info in info[b'files']:
+                    if b'length' in file_info:
+                        total_length += file_info[b'length']
+                return total_length
+            elif b'length' in info:
+                # 如果只有一个文件
+                return info[b'length']
+        return 0  # 无效的 .torrent 文件或没有文件信息
 
     @property
     def pieces(self) -> List[bytes]:

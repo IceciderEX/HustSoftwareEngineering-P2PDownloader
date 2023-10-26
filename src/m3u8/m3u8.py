@@ -62,7 +62,7 @@ def download_segment(segment_url, output_dir, index):
 
 
 # Function to download all segments
-def download_segments(segment_urls, output_dir):
+def download_segments(segment_urls, output_dir, start_time=None):
     """
     下载TS文件
     :param segment_urls: TS文件的请求列表
