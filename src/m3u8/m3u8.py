@@ -6,9 +6,12 @@ import concurrent.futures
 import time
 import logging
 from urllib.parse import urljoin
+import threading
 
 logging.basicConfig(level=logging.INFO)
 
+download_mutex = threading.Lock()
+successful_downloads = set()
 start_time=0
 
 # Function to download the M3U8 file
@@ -27,19 +30,38 @@ def parse_m3u8(m3u8_content, m3u8_url):
     return segment_urls
 
 def download_segment(segment_url, output_dir, index):
-    try:
-        response = requests.get(segment_url, stream=True)
-        if response.status_code == 200:
-            segment_filename = os.path.join(output_dir, f"segment_{index:04d}.ts")
-            with open(segment_filename, "wb") as f:
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
-                logging.info(f"Downloaded segment_{index:04d}.ts")
-        else:
-            logging.error(f"Failed to download segment_{index:04d}.ts")
-    except Exception as e:
-        logging.error(f"An error occurred while downloading segment_{index:04d}.ts: {str(e)}")
+    max_retries = 3  # Maximum number of retry attempts
+    retries = 0
+
+    # Check if another thread has successfully downloaded the same segment
+    with download_mutex:
+        if index in successful_downloads:
+            return
+
+    while retries < max_retries:
+        try:
+            response = requests.get(segment_url, stream=True)
+            if response.status_code == 200:
+                segment_filename = os.path.join(output_dir, f"segment_{index:04d}.ts")
+                with open(segment_filename, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+                    logging.info(f"Downloaded segment_{index:04d}.ts")
+
+                # Mark the segment as successfully downloaded
+                with download_mutex:
+                    successful_downloads.add(index)
+
+                return  # Successful download, exit the loop
+            else:
+                logging.error(f"Failed to download segment_{index:04d}.ts. Retrying...")
+        except Exception as e:
+            logging.error(f"An error occurred while downloading segment_{index:04d}.ts: {str(e)}")
+
+        retries += 1
+
+    logging.error(f"Failed to download segment_{index:04d}.ts after {max_retries} retries.")
 
 # Function to download all segments
 def download_segments(segment_urls, output_dir):

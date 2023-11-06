@@ -42,10 +42,6 @@ class TorrentClient:
             self.available_peers.get_nowait()
 
     def stop(self):
-        """
-        取消下载
-        :return:
-        """
         self.abort = True
         for peer in self.peers:
             peer.stop()
@@ -197,10 +193,3 @@ class TorrentClient:
         for peer in self.peers:
             peer.restart()
         logging.info(f'Download Restarted')
-
-    def download_progress(self):
-        """
-        下载进度
-        :return:
-        """
-        return self.piece_manager.download_progress()

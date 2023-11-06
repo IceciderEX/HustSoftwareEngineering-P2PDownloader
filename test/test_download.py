@@ -10,11 +10,7 @@ async def main():
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s: %(message)s',
                         datefmt='%Y/%m/%d %I:%M:%S %p')
-<<<<<<< HEAD
-    client = TorrentClient(Torrent("file/debian-9.3.0-amd64-netinst.torrent"))
-=======
     client = TorrentClient(Torrent("file/CCleaner.Professional.Plus.6.17.+.Patch-Keygen.torrent"))
->>>>>>> origin/icecider_magnetlink
     loop = asyncio.get_event_loop()
     task = loop.create_task(client.start())
     task2 = loop.create_task(client.return_download_time())

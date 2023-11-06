@@ -22,11 +22,7 @@
     <widget class="QLabel" name="label_2">
      <property name="font">
       <font>
-<<<<<<< HEAD
-       <family>华文细黑</family>
-=======
        <family>华文楷体</family>
->>>>>>> origin/icecider_magnetlink
        <pointsize>26</pointsize>
       </font>
      </property>
@@ -45,11 +41,7 @@
     <widget class="QLabel" name="label">
      <property name="font">
       <font>
-<<<<<<< HEAD
-       <family>等线</family>
-=======
        <family>华文楷体</family>
->>>>>>> origin/icecider_magnetlink
        <pointsize>12</pointsize>
       </font>
      </property>
@@ -72,11 +64,7 @@
     <widget class="QLabel" name="label_3">
      <property name="font">
       <font>
-<<<<<<< HEAD
-       <family>等线</family>
-=======
        <family>华文楷体</family>
->>>>>>> origin/icecider_magnetlink
        <pointsize>12</pointsize>
       </font>
      </property>
