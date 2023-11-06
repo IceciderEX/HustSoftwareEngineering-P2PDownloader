@@ -60,6 +60,7 @@ def download_segment(segment_url, output_dir, index):
             logging.error(f"An error occurred while downloading segment_{index:04d}.ts: {str(e)}")
 
         retries += 1
+        time.sleep(1)
 
     logging.error(f"Failed to download segment_{index:04d}.ts after {max_retries} retries.")
 
@@ -132,6 +133,7 @@ def jiekou(m3u8_url,output_dir,filename):
     #filename = input("input the filename for the video you want to download: ")
 
     #output_filename=output_dir+"\\"+filename
+    m3u8_url= m3u8_url.replace("al-vod", "videotx-platform")
     output_filename=os.path.join(output_dir,filename)
 
     try:
