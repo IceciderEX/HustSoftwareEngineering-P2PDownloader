@@ -1,12 +1,24 @@
-# @author 郑卯杨
-# @date 2023/9/27
-# @description 封装与Peer沟通的Message
 import logging
 import struct
 import bitstring
 
+"""
+    @filename message.py
+    @author 郑卯杨
+    @date 2023/10/10
+    @version 1.0
+    
+    该模块实现了通信要用到的所有信息类
+    每一个信息类都包含:
+        类成员函数encode: 编码为bytes类型
+        静态函数decode: 解码bytes类型,并返回一个对应类
+"""
+
 
 class MsgId:
+    """
+    枚举类,定义了通信状态
+    """
     Choke = 0
     Unchoke = 1
     Interested = 2
@@ -52,8 +64,8 @@ class HandShake(Message):
     def decode(cls, data: bytes):
         length = 49 + 19
         if len(data) != length:
-            logging.error(f"HandShake Decode: data length {len(data)}")
-            raise RuntimeError("HandShake Decode receive wrong data")
+            # logging.error(f"HandShake Decode: data length {len(data)}")
+            raise RuntimeError(f"HandShake Decode receive wrong data, len:{len(data)}")
 
         unpack_data = struct.unpack('>B19s8x20s20s', data)
         return HandShake(unpack_data[2], unpack_data[3])
@@ -109,14 +121,17 @@ class BitField(Message):
         self.bitfield = bitstring.BitArray(bytes=bitfield)
 
     def encode(self) -> bytes:
-        return struct.pack(f'>Ib{len(self.bitfield)}s',
-                           1 + len(self.bitfield), MsgId.Bitfield, self.bitfield)
+        length = len(self.bitfield)
+        return struct.pack('>Ib' + str(length) + 's',
+                           1 + length, MsgId.Bitfield, self.bitfield)
 
     @classmethod
     def decode(cls, data: bytes):
         length = struct.unpack('>I', data[:4])[0]
-        bitfield = struct.unpack(f'>{length - 1}s', data[5:])[0]
-        return BitField(bitfield)
+        # bitfield = struct.unpack(f'>{length - 1}s', data[5:])[0]
+
+        parts = struct.unpack('>Ib' + str(length - 1) + 's', data)
+        return cls(parts[2])
 
 
 REQUEST_SIZE = 2 ** 14

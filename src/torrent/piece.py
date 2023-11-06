@@ -1,16 +1,24 @@
-# @author 郑卯杨
-# @date 2023/9/30
-# @description 实现了Block类和Piece类,保存向Peer结点请求的数据
-
 import logging
+import time
 from hashlib import sha1
 from typing import Optional
+
+"""
+    @filename piece.py
+    @author 郑卯杨
+    @date 2023/10/10
+    @version 1.0
+    
+    该模块定义了与Peer通信时用到的数据结构Block和Piece
+    Block: 向Peer请求数据的最小单位
+    Piece: Torrent文件被划分的最小单位
+"""
 
 
 class Block:
     """
-    Block 是 Piece的一部分,每次向Peer请求的是Block大小的数据
-    除了每个Piece的最后一个Block外,都是REQUEST_SIZE(2**14)
+    Block是Piece的一部分,每次向Peer请求的是Block大小的数据
+    除了每个Piece的最后一个Block外,每一个Block都是REQUEST_SIZE(2**14)
     """
     Missing = 0
     Pending = 1
@@ -26,10 +34,15 @@ class Block:
         self.offset = offset
         self.length = length
         self.status = Block.Missing
+        self.time = None
         self.data = None
 
 
 class Piece:
+    """
+    Piece是Torrent文件被划分的最小单位,通过Piece来管理Block
+    """
+
     def __init__(self, index: int, blocks: [], hash_value):
         """
         :param index: 在整个文件中的index
@@ -41,6 +54,9 @@ class Piece:
         self.hash = hash_value
 
     def reset(self) -> None:
+        """
+        将Piece里的所有块的状态都重置为Missing
+        """
         for block in self.blocks:
             block.status = Block.Missing
 
@@ -52,9 +68,19 @@ class Piece:
         if missing:
             missing[0].status = Block.Pending
             return missing[0]
+        pending = [b for b in self.blocks if b.status is Block.Pending]  # 防止有些pending blocks卡在队列里
+        cur_time = round(time.time())
+        if pending and cur_time - pending[0].time > 60:
+            pending[0].status = Block.Pending
+            return pending[0]
         return None
 
     def block_received(self, offset: int, data: bytes):
+        """接受对应的Block数据
+
+        :param offset: Block在Piece中的偏移量
+        :param data: 接受到的Block的数据
+        """
         match = [b for b in self.blocks if b.offset == offset]
         block = match[0] if match else None
         if block:
@@ -64,17 +90,23 @@ class Piece:
             logging.warning(f"Trying to receive a non-existing block {offset=}")
 
     def finished(self) -> bool:
+        """
+        :return: 是否已经接受该Piece的所有Block
+        """
         blocks = [b for b in self.blocks if b.status is not Block.Retrieved]
         return len(blocks) == 0
 
     @property
-    def data(self):
+    def data(self) -> bytes:
         """
-        :return:所有block的数据按顺序合在一起就是piece.data
+        :return:将所有Block的数据按序合并
         """
         total = sorted(self.blocks, key=lambda b: b.offset)
         return b''.join([b.data for b in total])
 
     def match(self) -> bool:
+        """
+        :return: 是否hash匹配
+        """
         piece_hash = sha1(self.data).digest()
         return piece_hash == self.hash
