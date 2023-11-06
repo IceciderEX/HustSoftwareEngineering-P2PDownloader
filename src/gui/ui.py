@@ -86,6 +86,10 @@ class torrent_ui(QWidget,Ui_torrent):
             loop = asyncio.get_event_loop()
             client = TorrentClient(Torrent(torrent_file))
             task = loop.create_task(client.start())
+<<<<<<< HEAD
+=======
+            task2 = loop.create_task(client.return_download_time())
+>>>>>>> origin/icecider_magnetlink
 
             def signal_handler(*_):
                 logging.info('Exiting, please wait until everything is shutdown...')
@@ -96,6 +100,10 @@ class torrent_ui(QWidget,Ui_torrent):
 
             try:
                 loop.run_until_complete(task)
+<<<<<<< HEAD
+=======
+                loop.run_until_complete(task2)
+>>>>>>> origin/icecider_magnetlink
             except CancelledError:
                 logging.warning('Event loop was canceled')
 
@@ -131,8 +139,12 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = main_ui()
     window.show()
+<<<<<<< HEAD
     app.exec()
 
 
 
 
+=======
+    app.exec()
+>>>>>>> origin/icecider_magnetlink

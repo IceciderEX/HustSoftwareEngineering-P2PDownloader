@@ -7,7 +7,11 @@
     <x>0</x>
     <y>0</y>
     <width>357</width>
+<<<<<<< HEAD
     <height>299</height>
+=======
+    <height>324</height>
+>>>>>>> origin/icecider_magnetlink
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,6 +22,7 @@
     <normaloff>resource/logo.ico</normaloff>resource/logo.ico</iconset>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+<<<<<<< HEAD
    <item row="3" column="0">
     <widget class="QLineEdit" name="lineEdit_m3u8">
      <property name="alignment">
@@ -43,6 +48,16 @@
     </widget>
    </item>
    <item row="9" column="0">
+=======
+   <item row="11" column="0">
+    <widget class="QPushButton" name="pushButton">
+     <property name="text">
+      <string>确认下载</string>
+     </property>
+    </widget>
+   </item>
+   <item row="10" column="0">
+>>>>>>> origin/icecider_magnetlink
     <widget class="QLineEdit" name="lineEdit_name">
      <property name="baseSize">
       <size>
@@ -58,11 +73,57 @@
      </property>
     </widget>
    </item>
+<<<<<<< HEAD
    <item row="0" column="0">
     <widget class="QLabel" name="label">
      <property name="font">
       <font>
        <family>华文细黑</family>
+=======
+   <item row="4" column="0">
+    <widget class="QLineEdit" name="lineEdit_m3u8">
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="placeholderText">
+      <string>请输入m3u8网址</string>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="0">
+    <widget class="QPushButton" name="pushButton_path">
+     <property name="text">
+      <string>选择下载路径</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>下载路径：</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>m3u8网址：</string>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="0">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>保存文件名：</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="label">
+     <property name="font">
+      <font>
+       <family>华文楷体</family>
+>>>>>>> origin/icecider_magnetlink
        <pointsize>28</pointsize>
       </font>
      </property>
@@ -74,6 +135,7 @@
      </property>
     </widget>
    </item>
+<<<<<<< HEAD
    <item row="7" column="0">
     <widget class="QPushButton" name="pushButton_path">
      <property name="text">
@@ -95,6 +157,8 @@
      </property>
     </widget>
    </item>
+=======
+>>>>>>> origin/icecider_magnetlink
   </layout>
  </widget>
  <resources/>

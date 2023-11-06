@@ -16,26 +16,42 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QLabel, QPushButton, QSizePolicy,
+<<<<<<< HEAD
     QSpacerItem, QVBoxLayout, QWidget)
+=======
+    QVBoxLayout, QWidget)
+>>>>>>> origin/icecider_magnetlink
 
 class Ui_torrent(object):
     def setupUi(self, torrent):
         if not torrent.objectName():
             torrent.setObjectName(u"torrent")
+<<<<<<< HEAD
         torrent.resize(400, 300)
+=======
+        torrent.resize(537, 413)
+>>>>>>> origin/icecider_magnetlink
         icon = QIcon()
         icon.addFile(u"resource/logo.ico", QSize(), QIcon.Normal, QIcon.Off)
         torrent.setWindowIcon(icon)
         self.layoutWidget = QWidget(torrent)
         self.layoutWidget.setObjectName(u"layoutWidget")
+<<<<<<< HEAD
         self.layoutWidget.setGeometry(QRect(0, 20, 401, 171))
+=======
+        self.layoutWidget.setGeometry(QRect(20, 40, 483, 171))
+>>>>>>> origin/icecider_magnetlink
         self.verticalLayout = QVBoxLayout(self.layoutWidget)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.label = QLabel(self.layoutWidget)
         self.label.setObjectName(u"label")
         font = QFont()
+<<<<<<< HEAD
         font.setFamilies([u"\u534e\u6587\u5f69\u4e91"])
+=======
+        font.setFamilies([u"\u534e\u6587\u6977\u4f53"])
+>>>>>>> origin/icecider_magnetlink
         font.setPointSize(36)
         self.label.setFont(font)
         self.label.setAlignment(Qt.AlignCenter)
@@ -43,6 +59,7 @@ class Ui_torrent(object):
 
         self.verticalLayout.addWidget(self.label)
 
+<<<<<<< HEAD
         self.verticalSpacer = QSpacerItem(20, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
 
         self.verticalLayout.addItem(self.verticalSpacer)
@@ -55,6 +72,14 @@ class Ui_torrent(object):
         self.verticalLayout.addWidget(self.pushButton)
 
 
+=======
+        self.pushButton = QPushButton(torrent)
+        self.pushButton.setObjectName(u"pushButton")
+        self.pushButton.setGeometry(QRect(70, 280, 399, 24))
+        self.pushButton.setCheckable(True)
+        self.pushButton.setChecked(False)
+
+>>>>>>> origin/icecider_magnetlink
         self.retranslateUi(torrent)
 
         QMetaObject.connectSlotsByName(torrent)
@@ -62,7 +87,11 @@ class Ui_torrent(object):
 
     def retranslateUi(self, torrent):
         torrent.setWindowTitle(QCoreApplication.translate("torrent", u"torrent\u6587\u4ef6\u9009\u62e9", None))
+<<<<<<< HEAD
         self.label.setText(QCoreApplication.translate("torrent", u"torrent\u6587\u4ef6\u9009\u62e9\u5668", None))
+=======
+        self.label.setText(QCoreApplication.translate("torrent", u"Torrent\u6587\u4ef6\u9009\u62e9\u5668", None))
+>>>>>>> origin/icecider_magnetlink
         self.pushButton.setText(QCoreApplication.translate("torrent", u"\u9009\u62e9.torrent\u6587\u4ef6", None))
     # retranslateUi
 

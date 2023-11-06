@@ -6,8 +6,13 @@
    <rect>
     <x>0</x>
     <y>0</y>
+<<<<<<< HEAD
     <width>400</width>
     <height>300</height>
+=======
+    <width>537</width>
+    <height>413</height>
+>>>>>>> origin/icecider_magnetlink
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,9 +25,15 @@
   <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
+<<<<<<< HEAD
      <x>0</x>
      <y>20</y>
      <width>401</width>
+=======
+     <x>20</x>
+     <y>40</y>
+     <width>483</width>
+>>>>>>> origin/icecider_magnetlink
      <height>171</height>
     </rect>
    </property>
@@ -31,12 +42,20 @@
      <widget class="QLabel" name="label">
       <property name="font">
        <font>
+<<<<<<< HEAD
         <family>华文细黑</family>
+=======
+        <family>华文楷体</family>
+>>>>>>> origin/icecider_magnetlink
         <pointsize>36</pointsize>
        </font>
       </property>
       <property name="text">
+<<<<<<< HEAD
        <string>torrent文件选择器</string>
+=======
+       <string>Torrent文件选择器</string>
+>>>>>>> origin/icecider_magnetlink
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
@@ -46,6 +65,7 @@
       </property>
      </widget>
     </item>
+<<<<<<< HEAD
     <item>
      <spacer name="verticalSpacer">
       <property name="orientation">
@@ -74,6 +94,29 @@
     </item>
    </layout>
   </widget>
+=======
+   </layout>
+  </widget>
+  <widget class="QPushButton" name="pushButton">
+   <property name="geometry">
+    <rect>
+     <x>70</x>
+     <y>280</y>
+     <width>399</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>选择.torrent文件</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+  </widget>
+>>>>>>> origin/icecider_magnetlink
  </widget>
  <resources/>
  <connections/>
