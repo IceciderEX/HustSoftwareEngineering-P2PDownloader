@@ -1,5 +1,4 @@
-# @auther 李鑫煜
-
+#@auther 李鑫煜
 import os
 import requests
 import subprocess
@@ -10,15 +9,10 @@ from urllib.parse import urljoin
 
 logging.basicConfig(level=logging.INFO)
 
-
+start_time=0
 
 # Function to download the M3U8 file
 def download_m3u8(url):
-    """
-    发送下载请求
-    :param url: 请求URL
-    :return:
-    """
     response = requests.get(url)
     if response.status_code == 200:
         return response.text
@@ -28,24 +22,11 @@ def download_m3u8(url):
 
 # Function to parse the M3U8 playlist and extract segment URLs
 def parse_m3u8(m3u8_content):
-    """
-    解析m3u8得到TS文件列表
-    :param m3u8_content: m3u8内容
-    :return:
-    """
     lines = m3u8_content.split('\n')
     segment_urls = [urljoin(m3u8_url, line.strip()) for line in lines if line and not line.startswith("#")]
     return segment_urls
 
-
 def download_segment(segment_url, output_dir, index):
-    """
-    下载单个TS文件
-    :param segment_url:  TS文件的请求列表
-    :param output_dir: TS输出位置
-    :param index: 序号
-    :return:
-    """
     try:
         response = requests.get(segment_url, stream=True)
         if response.status_code == 200:
@@ -60,15 +41,8 @@ def download_segment(segment_url, output_dir, index):
     except Exception as e:
         logging.error(f"An error occurred while downloading segment_{index:04d}.ts: {str(e)}")
 
-
 # Function to download all segments
 def download_segments(segment_urls, output_dir):
-    """
-    下载TS文件
-    :param segment_urls: TS文件的请求列表
-    :param output_dir: TS输出位置
-    :return:
-    """
     os.makedirs(output_dir, exist_ok=True)
     total_segments = len(segment_urls)
     downloaded_segments = 0
@@ -94,15 +68,8 @@ def download_segments(segment_urls, output_dir):
             except Exception as e:
                 logging.error(f"Downloading of {url} generated an exception: {str(e)}")
 
-
 # Function to merge segments
 def merge_segments(output_dir, output_filename):
-    """
-    合并TS文件
-    :param output_dir: 输出位置
-    :param output_filename: 输出文件名
-    :return:
-    """
     ts_files = [os.path.join(output_dir, filename) for filename in os.listdir(output_dir) if filename.endswith(".ts")]
     try:
         cmd = ['ffmpeg', '-i', 'concat:' + '|'.join(ts_files), '-c', 'copy', output_filename]
@@ -117,32 +84,25 @@ def merge_segments(output_dir, output_filename):
     logging.info(f"Video saved as {output_filename}")
 
 
-def clean_up(self):
-    """
-    删除TS文件
-    :return: 无
-    """
+def clean_up(ts_files):
     try:
-        for ts_file in self.ts_files:
+        for ts_file in ts_files:
             os.remove(ts_file)
             logging.info(f'Deleted {ts_file}')
     except Exception as e:
         logging.error(f'An error occurred while cleaning up files: {e}')
 
+def jiekou(m3u8_url,output_dir,filename):
+#if __name__ == "__main__":
+    # Define the M3U8 URL you want to download
+    #m3u8_url = input("input the M3U8 URL you want to download: ")
 
+    # Define the output directory and filename for the final video
+    #output_dir = input("input the directory for the video to download: ")
+    #filename = input("input the filename for the video you want to download: ")
 
-def jiekou(m3u8_:str, output_:str, filen:str):
-    """
-    接口
-    :param m3u8_: m3u8url
-    :param output_: 输出位置
-    :param filen: 文件名
-    :return:
-    """
-    m3u8_url = m3u8_
-    output_dir = output_
-    filename = filen
-    output_filename = output_dir + "\\" + filename
+    #output_filename=output_dir+"\\"+filename
+    output_filename=os.path.join(output_dir,filename)
 
     try:
         m3u8_content = requests.get(m3u8_url).text
