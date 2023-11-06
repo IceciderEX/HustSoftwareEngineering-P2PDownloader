@@ -1,5 +1,4 @@
 #@auther 李鑫煜
-
 import os
 import requests
 import subprocess
@@ -9,6 +8,8 @@ import logging
 from urllib.parse import urljoin
 
 logging.basicConfig(level=logging.INFO)
+
+start_time=0
 
 # Function to download the M3U8 file
 def download_m3u8(url):
@@ -20,7 +21,7 @@ def download_m3u8(url):
 
 
 # Function to parse the M3U8 playlist and extract segment URLs
-def parse_m3u8(m3u8_content):
+def parse_m3u8(m3u8_content, m3u8_url):
     lines = m3u8_content.split('\n')
     segment_urls = [urljoin(m3u8_url, line.strip()) for line in lines if line and not line.startswith("#")]
     return segment_urls
@@ -46,6 +47,8 @@ def download_segments(segment_urls, output_dir):
     total_segments = len(segment_urls)
     downloaded_segments = 0
     total_bytes = 0
+    before_btyes = 0
+    before_time = time.time()
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         futures = {executor.submit(download_segment, url, output_dir, i): url for i, url in enumerate(segment_urls)}
@@ -59,10 +62,16 @@ def download_segments(segment_urls, output_dir):
 
                 # Calculate progress and speed
                 progress = downloaded_segments / total_segments * 100
-                average_speed = total_bytes / (1024 * (time.time() - start_time))  # Average speed in KB/s
+
+                downloaded_bytes = total_bytes - before_btyes
+                downloaded_time = time.time() - before_time
+                download_speed = 0
+                if downloaded_time != 0:
+                    download_speed = downloaded_bytes / downloaded_time
+                show_speed = download_speed / 1024  # Current speed in KB/s
 
                 logging.info(
-                    f"Downloaded {downloaded_segments}/{total_segments} segments - {progress:.2f}% complete ({average_speed:.2f} KB/s)")
+                    f"Downloaded {downloaded_segments}/{total_segments} segments - {progress:.2f}% complete ({show_speed:.2f} KB/s)")
 
             except Exception as e:
                 logging.error(f"Downloading of {url} generated an exception: {str(e)}")
@@ -91,13 +100,17 @@ def clean_up(ts_files):
     except Exception as e:
         logging.error(f'An error occurred while cleaning up files: {e}')
 
-if __name__ == "__main__":
+def jiekou(m3u8_url,output_dir,filename):
+#if __name__ == "__main__":
     # Define the M3U8 URL you want to download
-    m3u8_url = input("input the M3U8 URL you want to download: ")
+    #m3u8_url = input("input the M3U8 URL you want to download: ")
+
     # Define the output directory and filename for the final video
-    output_dir = input("input the directory for the video to download: ") 
-    filename = input("input the filename for the video you want to download: ")
-    output_filename=output_dir+"\\"+filename
+    #output_dir = input("input the directory for the video to download: ")
+    #filename = input("input the filename for the video you want to download: ")
+
+    #output_filename=output_dir+"\\"+filename
+    output_filename=os.path.join(output_dir,filename)
 
     try:
         m3u8_content = requests.get(m3u8_url).text

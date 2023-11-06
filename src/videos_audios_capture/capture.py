@@ -1,44 +1,55 @@
 import requests
 from bs4 import BeautifulSoup
 import os
+import re
+from urllib.parse import urljoin
 
 
 def capture(url, path):
-    """
-    自动检测获取网页的mp4和mp3文件
-    :param url: 要获取的网页url
-    :param path: 要下载到的位置
-    :return: TRUE or FALSE
-    """
-    # 步骤1：发送 HTTP 请求
     headers = {
         'User-Agent': 'Mozilla/5.0',
     }
 
     response = requests.get(url, headers=headers)
 
-    if response.status_code == 200:
-        page_content = response.text
-    else:
+    if response.status_code != 200:
         return False
 
-    # 步骤2：解析页面内容
+    page_content = response.text
     soup = BeautifulSoup(page_content, 'html.parser')
 
-    # 查找视频和音频链接
-    video_links = [link['href'] for link in soup.find_all('a', href=True) if link['href'].endswith('.mp4')]
-    audio_links = [source['src'] for source in soup.find_all('source', src=True) if source['src'].endswith('.mp3')]
+    # 获取所有<a>标签的href属性
+    all_links = [link['href'] for link in soup.find_all('a', href=True)]
 
-    # 步骤3：下载视频和音频
+    # 根据链接的扩展名筛选视频链接
+    video_links = [link for link in all_links if link.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.webm'))]
+
+    # 根据链接的扩展名筛选音频链接
+    audio_links = [link for link in all_links if link.lower().endswith(('.mp3', '.wav', '.ogg'))]
+
+    # 下载视频和音频
     for video_link in video_links:
-        video_response = requests.get(url + video_link, headers=headers)
-        with open(os.path.join(path, 'video.mp4'), 'wb') as f:
-            f.write(video_response.content)
+        try:
+            # 将视频链接转换为绝对链接
+            video_url = urljoin(url, video_link)
+            video_response = requests.get(video_url, headers=headers)
+            # 获取链接的文件名作为保存文件名
+            filename = os.path.basename(video_url)
+            with open(os.path.join(path, filename), 'wb') as f:
+                f.write(video_response.content)
+        except:
+            pass
 
     for audio_link in audio_links:
-        audio_response = requests.get(url + audio_link, headers=headers)
-        with open(os.path.join(path, 'audio.mp3'), 'wb') as f:
-            f.write(audio_response.content)
+        try:
+            # 将音频链接转换为绝对链接
+            audio_url = urljoin(url, audio_link)
+            audio_response = requests.get(audio_url, headers=headers)
+            # 获取链接的文件名作为保存文件名
+            filename = os.path.basename(audio_url)
+            with open(os.path.join(path, filename), 'wb') as f:
+                f.write(audio_response.content)
+        except:
+            pass
+
     return True
-
-
