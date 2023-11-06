@@ -31,7 +31,7 @@ class Ui_Capture(object):
         self.label_2 = QLabel(Capture)
         self.label_2.setObjectName(u"label_2")
         font = QFont()
-        font.setFamilies([u"\u534e\u6587\u7ec6\u9ed1"])
+        font.setFamilies([u"\u534e\u6587\u6977\u4f53"])
         font.setPointSize(26)
         self.label_2.setFont(font)
         self.label_2.setAlignment(Qt.AlignCenter)
@@ -42,7 +42,7 @@ class Ui_Capture(object):
         self.label = QLabel(Capture)
         self.label.setObjectName(u"label")
         font1 = QFont()
-        font1.setFamilies([u"\u7b49\u7ebf"])
+        font1.setFamilies([u"\u534e\u6587\u6977\u4f53"])
         font1.setPointSize(12)
         self.label.setFont(font1)
 

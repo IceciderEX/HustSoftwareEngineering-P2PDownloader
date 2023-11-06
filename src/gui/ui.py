@@ -11,23 +11,26 @@ from src.gui.mainwindow import Ui_MainWindow
 from src.gui.torrent import Ui_torrent
 from src.gui.m3u8 import Ui_m3u8
 from src.m3u8.m3u8 import jiekou
-from src.movie.test import MainWindow
+from src.movie.videoplayer import MainWindow
 from src.torrent.client import TorrentClient
 from src.torrent.torrent import Torrent
 from src.videos_audios_capture.capture import capture
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog
 
-class m3u8_ui(QWidget,Ui_m3u8):
+
+class m3u8_ui(QWidget, Ui_m3u8):
     def __init__(self):
         super().__init__()
         self.ui = Ui_m3u8()
         self.ui.setupUi(self)
         self.ui.pushButton_path.clicked.connect(self.select_path)
         self.ui.pushButton.clicked.connect(self.start_m3u8)
+
     def select_path(self):
         path = QFileDialog.getExistingDirectory(self)
         self.ui.pushButton_path.setText(path)
+
     def start_m3u8(self):
         m3u8_url = self.ui.lineEdit_m3u8.text()
         path = self.ui.pushButton_path.text()
@@ -37,14 +40,16 @@ class m3u8_ui(QWidget,Ui_m3u8):
         print(name)
         jiekou(m3u8_url, path, name)
 
-class small_capture_ui(QWidget,Ui_small_capture):
+
+class small_capture_ui(QWidget, Ui_small_capture):
     def __init__(self):
         super().__init__()
         self.ui = Ui_small_capture()
         self.ui.setupUi(self)
-        #self.ui.label.setText("下载失败")
+        # self.ui.label.setText("下载失败")
 
-class capture_ui(QWidget,Ui_Capture):
+
+class capture_ui(QWidget, Ui_Capture):
     def __init__(self):
         super().__init__()
         self.ui = Ui_Capture()
@@ -62,13 +67,13 @@ class capture_ui(QWidget,Ui_Capture):
         print(url)
         print(path)
         capture(url, path)
-            #self.ui = small_capture_ui()
-            #self.ui.label.setText("ok")
-            #self.ui.show()
+        # self.ui = small_capture_ui()
+        # self.ui.label.setText("ok")
+        # self.ui.show()
         print("ok")
 
 
-class torrent_ui(QWidget,Ui_torrent):
+class torrent_ui(QWidget, Ui_torrent):
     def __init__(self):
         super().__init__()
         self.ui = Ui_torrent()
@@ -86,6 +91,7 @@ class torrent_ui(QWidget,Ui_torrent):
             loop = asyncio.get_event_loop()
             client = TorrentClient(Torrent(torrent_file))
             task = loop.create_task(client.start())
+            task2 = loop.create_task(client.return_download_time())
 
             def signal_handler(*_):
                 logging.info('Exiting, please wait until everything is shutdown...')
@@ -96,11 +102,12 @@ class torrent_ui(QWidget,Ui_torrent):
 
             try:
                 loop.run_until_complete(task)
+                loop.run_until_complete(task2)
             except CancelledError:
                 logging.warning('Event loop was canceled')
 
 
-class main_ui(QWidget,Ui_MainWindow):
+class main_ui(QWidget, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.ui = Ui_MainWindow()
@@ -113,18 +120,18 @@ class main_ui(QWidget,Ui_MainWindow):
     def m3u8_botton(self):
         self.ui = m3u8_ui()
         self.ui.show()
-    def torrent_botton(self):
 
+    def torrent_botton(self):
         self.ui = torrent_ui()
         self.ui.show()
-    def mp3_botton(self):
 
+    def mp3_botton(self):
         self.ui = MainWindow()
         self.ui.show()
+
     def capture_botton(self):
         self.ui = capture_ui()
         self.ui.show()
-
 
 
 if __name__ == '__main__':
@@ -132,7 +139,3 @@ if __name__ == '__main__':
     window = main_ui()
     window.show()
     app.exec()
-
-
-
-

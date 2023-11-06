@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>537</width>
+    <height>413</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,9 +20,9 @@
   <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
-     <x>0</x>
-     <y>20</y>
-     <width>401</width>
+     <x>20</x>
+     <y>40</y>
+     <width>483</width>
      <height>171</height>
     </rect>
    </property>
@@ -31,12 +31,12 @@
      <widget class="QLabel" name="label">
       <property name="font">
        <font>
-        <family>华文细黑</family>
+        <family>华文楷体</family>
         <pointsize>36</pointsize>
        </font>
       </property>
       <property name="text">
-       <string>torrent文件选择器</string>
+       <string>Torrent文件选择器</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
@@ -46,33 +46,26 @@
       </property>
      </widget>
     </item>
-    <item>
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>0</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item>
-     <widget class="QPushButton" name="pushButton">
-      <property name="text">
-       <string>选择.torrent文件</string>
-      </property>
-      <property name="checkable">
-       <bool>true</bool>
-      </property>
-      <property name="checked">
-       <bool>false</bool>
-      </property>
-     </widget>
-    </item>
    </layout>
+  </widget>
+  <widget class="QPushButton" name="pushButton">
+   <property name="geometry">
+    <rect>
+     <x>70</x>
+     <y>280</y>
+     <width>399</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>选择.torrent文件</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
   </widget>
  </widget>
  <resources/>

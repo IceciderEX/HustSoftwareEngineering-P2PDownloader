@@ -4,7 +4,7 @@
 """PySide6 Multimedia player example"""
 
 import sys
-from PySide6.QtCore import QStandardPaths, Qt, Slot, QTime
+from PySide6.QtCore import QStandardPaths, Qt, Slot, QTime, QSize
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog,
                                QMainWindow, QSlider, QStyle, QToolBar, QVBoxLayout, QLabel)
@@ -37,7 +37,12 @@ class MainWindow(QMainWindow):
         self._audio_output = QAudioOutput()
         self._player = QMediaPlayer()
         self._player.setAudioOutput(self._audio_output)
+        self.setWindowTitle("视频播放器")
 
+        self.resize(1024, 800)
+        icon = QIcon()
+        icon.addFile(u"resource/logo.ico", QSize(), QIcon.Normal, QIcon.Off)
+        self.setWindowIcon(icon)
         self._player.errorOccurred.connect(self._player_error)
 
         tool_bar = QToolBar()
