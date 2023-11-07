@@ -299,7 +299,7 @@ class PieceManager:
         下载进度接口
         :return:下载进度
         """
-        return len(self.have_pieces) / (self.total_pieces * 100)
+        return len(self.have_pieces) / self.total_pieces * 100
 
     def download_place(self, path):
         """

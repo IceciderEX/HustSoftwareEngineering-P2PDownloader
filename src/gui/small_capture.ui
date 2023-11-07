@@ -6,16 +6,25 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>215</width>
-    <height>138</height>
+    <width>154</width>
+    <height>96</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>reptiles</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>resource/logo.ico</normaloff>resource/logo.ico</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label">
+     <property name="font">
+      <font>
+       <pointsize>22</pointsize>
+      </font>
+     </property>
      <property name="text">
       <string>TextLabel</string>
      </property>
