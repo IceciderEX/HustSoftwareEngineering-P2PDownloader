@@ -22,11 +22,17 @@ class Ui_small_capture(object):
     def setupUi(self, small_capture):
         if not small_capture.objectName():
             small_capture.setObjectName(u"small_capture")
-        small_capture.resize(215, 138)
+        small_capture.resize(154, 96)
+        icon = QIcon()
+        icon.addFile(u"resource/logo.ico", QSize(), QIcon.Normal, QIcon.Off)
+        small_capture.setWindowIcon(icon)
         self.verticalLayout = QVBoxLayout(small_capture)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.label = QLabel(small_capture)
         self.label.setObjectName(u"label")
+        font = QFont()
+        font.setPointSize(22)
+        self.label.setFont(font)
         self.label.setAlignment(Qt.AlignCenter)
 
         self.verticalLayout.addWidget(self.label)
@@ -38,7 +44,7 @@ class Ui_small_capture(object):
     # setupUi
 
     def retranslateUi(self, small_capture):
-        small_capture.setWindowTitle(QCoreApplication.translate("small_capture", u"Form", None))
+        small_capture.setWindowTitle(QCoreApplication.translate("small_capture", u"reptiles", None))
         self.label.setText(QCoreApplication.translate("small_capture", u"TextLabel", None))
     # retranslateUi
 

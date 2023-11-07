@@ -36,12 +36,18 @@ class TorrentClient:
         self.before_time = None
         self.before_bytes = None
         self.first_connect = True
+        self.download_speed = 0.0
+        self.download_Progress = 0.0
 
     def _empty_queue(self):
         while not self.available_peers.empty():
             self.available_peers.get_nowait()
 
     def stop(self):
+        """
+        取消下载
+        :return:
+        """
         self.abort = True
         for peer in self.peers:
             peer.stop()
@@ -149,13 +155,14 @@ class TorrentClient:
         show_speed = download_speed / 1024
         logging.info(f'Peers: {self.return_peers()}')
         logging.info(f'Download speed: {show_speed:.2f} KB/s')
-        return show_speed
+        self.download_speed = show_speed
 
     async def return_download_time(self):
         while not self.piece_manager.finished:
             self.update_download_speed()
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
         self.stop()
+
 
     def return_peers(self):
         """
@@ -172,7 +179,7 @@ class TorrentClient:
         指定下载位置
         :return:无
         """
-        self.piece_manager.download_place(str)
+        self.piece_manager.download_place(pah)
 
     def pause(self):
         """
@@ -193,3 +200,15 @@ class TorrentClient:
         for peer in self.peers:
             peer.restart()
         logging.info(f'Download Restarted')
+
+    async def download_progress(self):
+        """
+        下载进度
+        :return:
+        """
+        while not self.piece_manager.finished:
+            self.download_Progress = self.piece_manager.download_progress()
+            logging.info(f'下载进度：{self.download_Progress:.2f}')
+            await asyncio.sleep(1)
+        self.stop()
+
