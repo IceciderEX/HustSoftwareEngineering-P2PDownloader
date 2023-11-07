@@ -10,6 +10,7 @@ from src.gui.small_capture import Ui_small_capture
 from src.gui.mainwindow import Ui_MainWindow
 from src.gui.torrent import Ui_torrent
 from src.gui.m3u8 import Ui_m3u8
+from src.gui.MegnetLink import Ui_magnetlink
 from src.m3u8.m3u8 import jiekou
 from src.movie.videoplayer import MainWindow
 from src.torrent.client import TorrentClient
@@ -25,6 +26,28 @@ class m3u8_ui(QWidget, Ui_m3u8):
     def __init__(self):
         super().__init__()
         self.ui = Ui_m3u8()
+        self.ui.setupUi(self)
+        self.ui.pushButton_path.clicked.connect(self.select_path)
+        self.ui.pushButton.clicked.connect(self.start_m3u8)
+
+    def select_path(self):
+        path = QFileDialog.getExistingDirectory(self)
+        self.ui.pushButton_path.setText(path)
+
+    def start_m3u8(self):
+        m3u8_url = self.ui.lineEdit_m3u8.text()
+        path = self.ui.pushButton_path.text()
+        name = self.ui.lineEdit_name.text()
+        # print(m3u8_url)
+        # print(path)
+        # print(name)
+        jiekou(m3u8_url, path, name)
+
+
+class magnetlink_ui(QWidget, Ui_magnetlink):
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_magnetlink()
         self.ui.setupUi(self)
         self.ui.pushButton_path.clicked.connect(self.select_path)
         self.ui.pushButton.clicked.connect(self.start_m3u8)
@@ -79,7 +102,6 @@ class torrent_tread_start(QThread):
     signal_speed = Signal(float)
     signal_progress = Signal(float)
 
-
     def __init__(self, file, path):
         super().__init__()
         self.file = file
@@ -96,6 +118,7 @@ class torrent_tread_start(QThread):
             self.signal_progress.emit(client.download_Progress)
             await asyncio.sleep(1)
         client.stop()
+
     def run(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -122,7 +145,6 @@ class torrent_tread_start(QThread):
             loop.run_until_complete(task5)
         except CancelledError:
             logging.warning('Event loop was canceled')
-
 
 
 class torrent_ui(QWidget, Ui_torrent):
@@ -225,6 +247,10 @@ class main_ui(QWidget, Ui_MainWindow):
 
     def capture_botton(self):
         self.ui = capture_ui()
+        self.ui.show()
+
+    def magnetlink(self):
+        self.ui = magnetlink_ui()
         self.ui.show()
 
 
