@@ -186,7 +186,7 @@ class torrent_ui(QWidget, Ui_torrent):
         self.ui.progressBar.setValue(result)
 
     def callback_speed(self, result):
-        self.ui.label_2.setText(f"下载速度：   {result} KB/S")
+        self.ui.label_2.setText(f"下载速度：   {result:.2f} KB/S")
 
     def restart(self):
         client = TorrentClient(Torrent(self.ui.pushButton.text()))

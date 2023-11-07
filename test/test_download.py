@@ -10,10 +10,14 @@ async def main():
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s: %(message)s',
                         datefmt='%Y/%m/%d %I:%M:%S %p')
-    client = TorrentClient(Torrent("file/CCleaner.Professional.Plus.6.17.+.Patch-Keygen.torrent"))
+    client = TorrentClient(Torrent("file/debian-9.3.0-amd64-netinst.torrent"))
     loop = asyncio.get_event_loop()
     task = loop.create_task(client.start())
     task2 = loop.create_task(client.return_download_time())
+
+    # Pause after 20 seconds
+    # await asyncio.sleep(20)
+    # client.stop()
 
     # Pause after 20 seconds
     # await asyncio.sleep(20)

@@ -225,6 +225,9 @@ class PieceManager:
 
         :return: 符合条件的Block 或 None
         """
+        if len(self.have_pieces) == 800:
+            i = 1
+
         if peer_id not in self.peers:
             return None
         block = self._expired_requests(peer_id)

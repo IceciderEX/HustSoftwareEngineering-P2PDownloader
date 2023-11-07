@@ -43,7 +43,7 @@ class TorrentClient:
         while not self.available_peers.empty():
             self.available_peers.get_nowait()
 
-    def stop(self):
+    async def stop(self):
         """
         取消下载
         :return:
@@ -52,7 +52,7 @@ class TorrentClient:
         for peer in self.peers:
             peer.stop()
         for tracker in self.trackers:
-            tracker.close()
+            await tracker.close()
 
     def _on_block_retrieved(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes):
         self.piece_manager.block_received(peer_id, piece_index, block_offset, data)
