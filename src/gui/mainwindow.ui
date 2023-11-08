@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>524</width>
-    <height>362</height>
+    <width>510</width>
+    <height>412</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -47,6 +47,13 @@
      </property>
      <property name="checked">
       <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="pushButton_magnetlink">
+     <property name="text">
+      <string>磁力链接转Torrent文件</string>
      </property>
     </widget>
    </item>

@@ -432,6 +432,8 @@ class Connection:
                     async for message in UDPPeerStreamIterator(self.sock, buffer):
                         if STOPPED in self.my_state:
                             break
+                        if PAUSED in self.my_state:
+                            await self.pause_event.wait()  # 暂停时等待暂停事件
                         if type(message) is BitField:
                             self.piece_manager.add_peer(self.remote_id, message.bitfield)
                         elif type(message) is Interested:

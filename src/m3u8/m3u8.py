@@ -6,9 +6,12 @@ import concurrent.futures
 import time
 import logging
 from urllib.parse import urljoin
+import threading
 
 logging.basicConfig(level=logging.INFO)
 
+download_mutex = threading.Lock()
+successful_downloads = set()
 start_time=0
 
 # Function to download the M3U8 file
@@ -27,19 +30,41 @@ def parse_m3u8(m3u8_content, m3u8_url):
     return segment_urls
 
 def download_segment(segment_url, output_dir, index):
-    try:
-        response = requests.get(segment_url, stream=True)
-        if response.status_code == 200:
-            segment_filename = os.path.join(output_dir, f"segment_{index:04d}.ts")
-            with open(segment_filename, "wb") as f:
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
-                logging.info(f"Downloaded segment_{index:04d}.ts")
-        else:
-            logging.error(f"Failed to download segment_{index:04d}.ts")
-    except Exception as e:
-        logging.error(f"An error occurred while downloading segment_{index:04d}.ts: {str(e)}")
+    max_retries = 10  # Maximum number of retry attempts
+    retries = 0
+
+    # Check if another thread has successfully downloaded the same segment
+    with download_mutex:
+        if index in successful_downloads:
+            return
+
+    while retries < max_retries:
+        try:
+            response = requests.get(segment_url, stream=True)
+            if retries >= 1:
+                print(f"Re-Request for segment: {index}")
+            if response.status_code == 200:
+                segment_filename = os.path.join(output_dir, f"segment_{index:04d}.ts")
+                with open(segment_filename, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+                    print(f"Downloading segment_{index:04d}.ts", end="")
+
+                # Mark the segment as successfully downloaded
+                with download_mutex:
+                    successful_downloads.add(index)
+
+                return  # Successful download, exit the loop
+            else:
+                print(f"Failed to download segment_{index:04d}.ts. Retrying...", end="")
+        except Exception as e:
+            print(f"An error occurred while downloading segment_{index:04d}.ts: {str(e)}", end="")
+
+        retries += 1
+        time.sleep(1)
+
+    print(f"Failed to download segment_{index:04d}.ts after {max_retries} retries.", end="")
 
 # Function to download all segments
 def download_segments(segment_urls, output_dir):
@@ -70,11 +95,11 @@ def download_segments(segment_urls, output_dir):
                     download_speed = downloaded_bytes / downloaded_time
                 show_speed = download_speed / 1024  # Current speed in KB/s
 
-                logging.info(
-                    f"Downloaded {downloaded_segments}/{total_segments} segments - {progress:.2f}% complete ({show_speed:.2f} KB/s)")
+                print(
+                    f"Downloaded {downloaded_segments}/{total_segments} segments - {progress:.2f}% complete ({show_speed:.2f} KB/s)", end="")
 
             except Exception as e:
-                logging.error(f"Downloading of {url} generated an exception: {str(e)}")
+                print(f"Downloading of {url} generated an exception: {str(e)}", end="")
 
 # Function to merge segments
 def merge_segments(output_dir, output_filename):
@@ -82,23 +107,23 @@ def merge_segments(output_dir, output_filename):
     try:
         cmd = ['ffmpeg', '-i', 'concat:' + '|'.join(ts_files), '-c', 'copy', output_filename]
         subprocess.run(cmd, check=True)
-        logging.info(f'Successfully merged {len(ts_files)} .ts files into {output_filename}')
+        print(f'Successfully merged {len(ts_files)} .ts files into {output_filename}', end="")
     except subprocess.CalledProcessError as e:
-        logging.error(f'Error merging files: {e}')
+        print(f'Error merging files: {e}', end="")
     except Exception as e:
-        logging.error(f'An error occurred: {e}')
+        print(f'An error occurred: {e}', end="")
     clean_up(ts_files)
-    logging.info(".ts files were cleaned up!")
-    logging.info(f"Video saved as {output_filename}")
+    print("All .ts files have been cleaned up!", end="")
+    print(f"Video saved as {output_filename}", end="")
 
 
 def clean_up(ts_files):
     try:
         for ts_file in ts_files:
             os.remove(ts_file)
-            logging.info(f'Deleted {ts_file}')
+        # print(f'Deleted all ts_file')
     except Exception as e:
-        logging.error(f'An error occurred while cleaning up files: {e}')
+        print(f'An error occurred while cleaning up files: {e}', end="")
 
 def jiekou(m3u8_url,output_dir,filename):
 #if __name__ == "__main__":
@@ -110,6 +135,7 @@ def jiekou(m3u8_url,output_dir,filename):
     #filename = input("input the filename for the video you want to download: ")
 
     #output_filename=output_dir+"\\"+filename
+    m3u8_url= m3u8_url.replace("al-vod", "videotx-platform")
     output_filename=os.path.join(output_dir,filename)
 
     try:
@@ -120,4 +146,4 @@ def jiekou(m3u8_url,output_dir,filename):
         download_segments(segment_urls, output_dir)
         merge_segments(output_dir, output_filename)
     except Exception as e:
-        logging.error(f"An error occurred: {str(e)}")
+        print(f"An error occurred: {str(e)}")

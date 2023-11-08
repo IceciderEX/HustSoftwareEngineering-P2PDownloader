@@ -36,17 +36,19 @@ class TorrentClient:
         self.before_time = None
         self.before_bytes = None
         self.first_connect = True
+        self.download_speed = 0.0
+        self.download_Progress = 0.0
 
     def _empty_queue(self):
         while not self.available_peers.empty():
             self.available_peers.get_nowait()
 
-    def stop(self):
+    async def stop(self):
         self.abort = True
         for peer in self.peers:
             peer.stop()
         for tracker in self.trackers:
-            tracker.close()
+            await tracker.close()
 
     def _on_block_retrieved(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes):
         self.piece_manager.block_received(peer_id, piece_index, block_offset, data)
@@ -96,7 +98,7 @@ class TorrentClient:
                                     uploaded=0,
                                     downloaded=self.piece_manager.bytes_downloaded
                                 ),
-                                timeout=8  # 设置tracker的最长相应时间为8s，超过不再连接
+                                timeout=3  # 设置tracker的最长相应时间为8s，超过不再连接
                             )
                         )
                         tracker_tasks.append(task)
@@ -122,8 +124,8 @@ class TorrentClient:
                         index += 1
             except ConnectionError:
                 logging.info("UDP unable to connect")
-            await asyncio.sleep(12)
-        self.stop()
+            await asyncio.sleep(8)
+        await self.stop()
 
     def update_download_speed(self):
         """
@@ -149,13 +151,13 @@ class TorrentClient:
         show_speed = download_speed / 1024
         logging.info(f'Peers: {self.return_peers()}')
         logging.info(f'Download speed: {show_speed:.2f} KB/s')
-        return show_speed
+        self.download_speed = show_speed
 
     async def return_download_time(self):
         while not self.piece_manager.finished:
             self.update_download_speed()
-            await asyncio.sleep(3)
-        self.stop()
+            await asyncio.sleep(2)
+        await self.stop()
 
     def return_peers(self):
         """
@@ -167,12 +169,12 @@ class TorrentClient:
                 count += 1
         return count
 
-    def find_download_place(self, pah: str):
+    def find_download_place(self, path: str):
         """
         指定下载位置
         :return:无
         """
-        self.piece_manager.download_place(str)
+        self.piece_manager.download_place(path)
 
     def pause(self):
         """
@@ -193,3 +195,14 @@ class TorrentClient:
         for peer in self.peers:
             peer.restart()
         logging.info(f'Download Restarted')
+
+    async def download_progress(self):
+        """
+        下载进度
+        :return:
+        """
+        while not self.piece_manager.finished:
+            self.download_Progress = self.piece_manager.download_progress()
+            logging.info(f'下载进度：{self.download_Progress:.2f}')
+            await asyncio.sleep(2)
+        await self.stop()

@@ -61,11 +61,15 @@ class PieceManager:
                           for offset in range(std_num_blocks)]
             else:
                 last_piece_len = self.torrent.length % self.torrent.piece_length
-                num_blocks = math.ceil(last_piece_len / REQUEST_SIZE)
-                blocks = [Block(index, offset * REQUEST_SIZE, REQUEST_SIZE)
-                          for offset in range(num_blocks)]
-                if last_piece_len % REQUEST_SIZE > 0:
-                    blocks[-1].length = last_piece_len % REQUEST_SIZE
+                if last_piece_len != 0:
+                    num_blocks = math.ceil(last_piece_len / REQUEST_SIZE)
+                    blocks = [Block(index, offset * REQUEST_SIZE, REQUEST_SIZE)
+                              for offset in range(num_blocks)]
+                    if last_piece_len % REQUEST_SIZE > 0:
+                        blocks[-1].length = last_piece_len % REQUEST_SIZE
+                else:
+                    blocks = [Block(index, offset * REQUEST_SIZE, REQUEST_SIZE)
+                              for offset in range(std_num_blocks)]
             pieces.append(Piece(index, blocks, hash_value))
         return pieces
 
@@ -212,8 +216,12 @@ class PieceManager:
             for file_info in self.files:
                 file_path_parts = [self.d_path] + file_info['path']
                 file_path = os.path.join(*file_path_parts)
-            with open(file_path, 'wb') as file:
-                file.write(piece.data)
+            if piece.index == 0:
+                with open(file_path, 'wb') as file:
+                    file.write(piece.data)
+            else:
+                with open(file_path, 'ab') as file:
+                    file.write(piece.data)
 
     def next_request(self, peer_id: bytes) -> Optional[Block]:
         """
@@ -225,6 +233,7 @@ class PieceManager:
 
         :return: 符合条件的Block 或 None
         """
+
         if peer_id not in self.peers:
             return None
         block = self._expired_requests(peer_id)
@@ -299,7 +308,7 @@ class PieceManager:
         下载进度接口
         :return:下载进度
         """
-        return len(self.have_pieces) / (self.total_pieces * 100)
+        return len(self.have_pieces) / self.total_pieces * 100
 
     def download_place(self, path):
         """
