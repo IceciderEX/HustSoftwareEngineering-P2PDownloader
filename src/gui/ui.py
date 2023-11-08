@@ -48,7 +48,7 @@ class small_capture_ui(QWidget, Ui_small_capture):
         super().__init__()
         self.ui = Ui_small_capture()
         self.ui.setupUi(self)
-        # self.ui.label.setText("下载失败")
+        self.ui.label.setText("下载完成！")
 
 
 class capture_ui(QWidget, Ui_Capture):
@@ -78,6 +78,7 @@ class capture_ui(QWidget, Ui_Capture):
 class torrent_tread_start(QThread):
     signal_speed = Signal(float)
     signal_progress = Signal(float)
+    signal_done = Signal(bool)
 
     def __init__(self, file, path):
         super().__init__()
@@ -131,8 +132,9 @@ class torrent_tread_start(QThread):
             loop.run_until_complete(task5)
         except CancelledError:
             logging.warning('Event loop was canceled')
-
-
+        done_window = small_capture_ui()
+        done_window.show()
+        self.signal_progress.emit(100)
 
 class torrent_ui(QWidget, Ui_torrent):
     def __init__(self):
@@ -186,6 +188,7 @@ class torrent_ui(QWidget, Ui_torrent):
         self.thread_.signal_progress.connect(self.callback_progress)
         self.thread_.signal_speed.connect(self.callback_speed)
         self.thread_.start()
+
         # loop = asyncio.get_event_loop()
         # client = TorrentClient(Torrent(self.ui.pushButton.text()))
         # task = loop.create_task(client.start())
@@ -208,6 +211,7 @@ class torrent_ui(QWidget, Ui_torrent):
     def stop(self):
         self.thread_.stop_()
         self.close()
+
 
 class main_ui(QWidget, Ui_MainWindow):
     def __init__(self):
@@ -234,6 +238,7 @@ class main_ui(QWidget, Ui_MainWindow):
     def capture_botton(self):
         self.ui = capture_ui()
         self.ui.show()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
