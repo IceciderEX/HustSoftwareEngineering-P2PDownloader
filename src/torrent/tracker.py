@@ -205,14 +205,14 @@ class Tracker:
                 logging.info('Connect to tracker timeout!')
                 self.can_connect = False
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """
         关闭掉异步资源
         """
         if self.use_udp:
             self.sock.close()
         else:
-            self.http_client.close()
+            await self.http_client.close()
 
     def update_previous(self, current):
         self.previous = current

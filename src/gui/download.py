@@ -16,19 +16,19 @@ def download(torrentfile: str):
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s: %(message)s',
                         datefmt='%Y/%m/%d %I:%M:%S %p')
-    loop = asyncio.get_event_loop()
-    client = TorrentClient(Torrent(torrentfile))
-    task = loop.create_task(client.start())
+    loop = asyncio.get_event_loop()   # 获取事件循环
+    client = TorrentClient(Torrent(torrentfile))  # 创建TorrentClient实例，传入选择的.torrent文件
+    task = loop.create_task(client.start())  # 创建异步任务以开始下载
 
     def signal_handler(*_):
         logging.info('Exiting, please wait until everything is shutdown...')
-        client.stop()
-        task.cancel()
+        client.stop()  # 响应信号，停止下载
+        task.cancel()  # 取消异步任务
 
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
         loop.run_until_complete(task)
     except CancelledError:
-        logging.warning('Event loop was canceled')
+        logging.warning('Event loop was canceled')  # 如果事件循环被取消，记录警告信息
 

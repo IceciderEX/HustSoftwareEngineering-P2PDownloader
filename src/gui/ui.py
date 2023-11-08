@@ -22,6 +22,7 @@ from PySide6.QtCore import QThread, Signal
 
 
 class m3u8_ui(QWidget, Ui_m3u8):
+    # 创建一个用于处理M3U8的界面
     def __init__(self):
         super().__init__()
         self.ui = Ui_m3u8()
@@ -30,10 +31,12 @@ class m3u8_ui(QWidget, Ui_m3u8):
         self.ui.pushButton.clicked.connect(self.start_m3u8)
 
     def select_path(self):
+        # 打开文件对话框以选择保存路径
         path = QFileDialog.getExistingDirectory(self)
         self.ui.pushButton_path.setText(path)
 
     def start_m3u8(self):
+        # 获取输入的M3U8 URL、保存路径和名称，然后启动下载
         m3u8_url = self.ui.lineEdit_m3u8.text()
         path = self.ui.pushButton_path.text()
         name = self.ui.lineEdit_name.text()
@@ -44,6 +47,7 @@ class m3u8_ui(QWidget, Ui_m3u8):
 
 
 class small_capture_ui(QWidget, Ui_small_capture):
+    # 创建一个小型捕获完成界面
     def __init__(self):
         super().__init__()
         self.ui = Ui_small_capture()
@@ -52,6 +56,7 @@ class small_capture_ui(QWidget, Ui_small_capture):
 
 
 class capture_ui(QWidget, Ui_Capture):
+    # 创建一个用于视频捕获的界面
     def __init__(self):
         super().__init__()
         self.ui = Ui_Capture()
@@ -60,12 +65,14 @@ class capture_ui(QWidget, Ui_Capture):
         self.ui.pushButton_path.clicked.connect(self.select_path)
 
     def select_path(self):
+        # 打开文件对话框以选择保存路径
         path = QFileDialog.getExistingDirectory(self)
         self.ui.pushButton_path.setText(path)
 
     def start_capture(self):
         url = self.ui.lineEdit.text()
         path = self.ui.pushButton_path.text()
+        # 调用捕获函数并传入URL和路径，开始下载
         # print(url)
         # print(path)
         capture(url, path)
@@ -76,6 +83,7 @@ class capture_ui(QWidget, Ui_Capture):
 
 
 class torrent_tread_start(QThread):
+    # 创建一个用于处理种子下载的线程
     signal_speed = Signal(float)
     signal_progress = Signal(float)
     signal_done = Signal(bool)
@@ -84,34 +92,42 @@ class torrent_tread_start(QThread):
         super().__init__()
         self.file = file
         self.path = path
+        # 创建TorrentClient并传入Torrent文件
         self.client = TorrentClient(Torrent(self.file))
 
     async def speed(self, client):
         while not client.piece_manager.finished:
+            # 发射下载速度信号
             self.signal_speed.emit(client.download_speed)
             await asyncio.sleep(1)
         client.stop()
 
     async def progress(self, client):
         while not client.piece_manager.finished:
+            # 发射下载速度信号
             self.signal_progress.emit(client.download_Progress)
             await asyncio.sleep(1)
         client.stop()
 
     def restart_(self):
+        # 重新开始下载
         self.client.restart()
 
     def pause_(self):
+        # 暂停下载
         self.client.pause()
 
     def stop_(self):
+        #停止下载
         self.client.stop()
 
     def run(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        # 查找下载位置
         # self.client = TorrentClient(Torrent(self.file))
         self.client.find_download_place(self.path)
+        # 创建异步任务
         task = loop.create_task(self.client.start())
         task2 = loop.create_task(self.client.return_download_time())
         task3 = loop.create_task(self.client.download_progress())
@@ -136,7 +152,9 @@ class torrent_tread_start(QThread):
         done_window.show()
         self.signal_progress.emit(100)
 
+
 class torrent_ui(QWidget, Ui_torrent):
+    # 创建一个用于处理种子下载的界面
     def __init__(self):
         super().__init__()
         self.thread_ = None
@@ -159,27 +177,8 @@ class torrent_ui(QWidget, Ui_torrent):
                                                       "Torrent Files (*.torrent)")
         self.ui.pushButton.setText(torrent_file)
 
-        # if torrent_file:
-        #     logging.basicConfig(level=logging.INFO)
-        #     loop = asyncio.get_event_loop()
-        #     client = TorrentClient(Torrent(torrent_file))
-        #     task = loop.create_task(client.start())
-        # #     task2 = loop.create_task(client.return_download_time())
-        # #
-        # #     def signal_handler(*_):
-        # #         logging.info('Exiting, please wait until everything is shutdown...')
-        # #         client.stop()
-        # #         task.cancel()
-        # #
-        #     # signal.signal(signal.SIGINT, signal_handler)
-        #
-        #     # try:
-        #     loop.run_until_complete(task)
-        # #         loop.run_until_complete(task2)
-        # #     except CancelledError:
-        # #         logging.warning('Event loop was canceled')
-
     def download_place(self):
+        # 打开文件对话框以选择保存路径
         path = QFileDialog.getExistingDirectory(self)
         self.ui.pushButton_path.setText(path)
 
@@ -189,31 +188,30 @@ class torrent_ui(QWidget, Ui_torrent):
         self.thread_.signal_speed.connect(self.callback_speed)
         self.thread_.start()
 
-        # loop = asyncio.get_event_loop()
-        # client = TorrentClient(Torrent(self.ui.pushButton.text()))
-        # task = loop.create_task(client.start())
-        # loop.run_until_complete(task)
-        # progressBar_value = PieceManager.download_progress(self)
-        # self.ui.progressBar.setValue(self, progressBar_value)
-
     def callback_progress(self, result):
+        # 更新下载进度条
         self.ui.progressBar.setValue(result)
 
     def callback_speed(self, result):
+        # 更新下载速度标签
         self.ui.label_2.setText(f"下载速度：   {result:.2f} KB/S")
 
     def restart(self):
+        # 重新开始下载
         self.thread_.restart_()
 
     def pause(self):
+        # 暂停下载
         self.thread_.pause_()
 
     def stop(self):
+        # 停止下载并关闭界面
         self.thread_.stop_()
         self.close()
 
 
 class main_ui(QWidget, Ui_MainWindow):
+    # 创建主界面
     def __init__(self):
         super().__init__()
         self.ui = Ui_MainWindow()
@@ -239,7 +237,7 @@ class main_ui(QWidget, Ui_MainWindow):
         self.ui = capture_ui()
         self.ui.show()
 
-
+#主程序入口
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = main_ui()

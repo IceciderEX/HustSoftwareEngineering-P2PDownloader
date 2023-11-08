@@ -19,32 +19,34 @@ from PySide6.QtWidgets import (QApplication, QLabel, QSizePolicy, QVBoxLayout,
     QWidget)
 
 class Ui_small_capture(object):
+    # 设置界面的基本属性
     def setupUi(self, small_capture):
         if not small_capture.objectName():
             small_capture.setObjectName(u"small_capture")
         small_capture.resize(154, 96)
+
         icon = QIcon()
         icon.addFile(u"resource/logo.ico", QSize(), QIcon.Normal, QIcon.Off)
-        small_capture.setWindowIcon(icon)
+        small_capture.setWindowIcon(icon)  # 设置窗口图标
+
         self.verticalLayout = QVBoxLayout(small_capture)
-        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.verticalLayout.setObjectName(u"verticalLayout")  # 创建垂直布局
+
+        # 创建标签，用于显示文本内容
         self.label = QLabel(small_capture)
         self.label.setObjectName(u"label")
         font = QFont()
         font.setPointSize(22)
-        self.label.setFont(font)
-        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setFont(font)  # 设置标签的字体和大小
+        self.label.setAlignment(Qt.AlignCenter)  # 设置文本居中对齐
 
-        self.verticalLayout.addWidget(self.label)
+        self.verticalLayout.addWidget(self.label)  # 将标签添加到垂直布局中
 
+        self.retranslateUi(small_capture)  # 设置UI元素的文本内容
 
-        self.retranslateUi(small_capture)
-
-        QMetaObject.connectSlotsByName(small_capture)
-    # setupUi
+        QMetaObject.connectSlotsByName(small_capture)  # 连接信号和槽
 
     def retranslateUi(self, small_capture):
         small_capture.setWindowTitle(QCoreApplication.translate("small_capture", u"reptiles", None))
         self.label.setText(QCoreApplication.translate("small_capture", u"TextLabel", None))
-    # retranslateUi
 
