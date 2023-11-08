@@ -53,24 +53,3 @@ class TorrentFileSelectorApp(QMainWindow):
                 loop.run_until_complete(task)
             except CancelledError:
                 logging.warning('Event loop was canceled')
-
-
-# def main():
-#     app = QApplication(sys.argv)
-#     # 设置程序图标
-#     app_icon = QIcon("resource/logo.ico")
-#     app.setWindowIcon(app_icon)
-#
-#     window = TorrentFileSelectorApp()
-#     window.show()
-#     sys.exit(app.exec())
-
-# def main():
-#     window = Ui_MainWindow
-#
-#
-#
-#
-#
-# if __name__ == "__main__":
-#     main()

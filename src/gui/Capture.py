@@ -9,16 +9,21 @@
 ################################################################################
 
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
+                            QMetaObject, QObject, QPoint, QRect,
+                            QSize, QTime, QUrl, Qt)
 from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
+                           QFont, QFontDatabase, QGradient, QIcon,
+                           QImage, QKeySequence, QLinearGradient, QPainter,
+                           QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QLabel, QLineEdit, QPushButton,
-    QSizePolicy, QVBoxLayout, QWidget)
+                               QSizePolicy, QVBoxLayout, QWidget)
+
 
 class Ui_Capture(object):
+    """
+    网页捕获音视频的UI界面
+    """
+
     def setupUi(self, Capture):
         if not Capture.objectName():
             Capture.setObjectName(u"Capture")
@@ -70,19 +75,18 @@ class Ui_Capture(object):
 
         self.verticalLayout.addWidget(self.pushButton)
 
-
         self.retranslateUi(Capture)
 
         QMetaObject.connectSlotsByName(Capture)
-    # setupUi
 
     def retranslateUi(self, Capture):
         Capture.setWindowTitle(QCoreApplication.translate("Capture", u"Capture", None))
         self.label_2.setText(QCoreApplication.translate("Capture", u"\u7f51\u9875\u6355\u83b7\u97f3\u89c6\u9891", None))
         self.label.setText(QCoreApplication.translate("Capture", u"\u7f51\u5740\uff1a", None))
-        self.lineEdit.setPlaceholderText(QCoreApplication.translate("Capture", u"\u8bf7\u8f93\u5165\u60f3\u8981\u6355\u83b7\u7684\u7f51\u5740", None))
+        self.lineEdit.setPlaceholderText(
+            QCoreApplication.translate("Capture", u"\u8bf7\u8f93\u5165\u60f3\u8981\u6355\u83b7\u7684\u7f51\u5740",
+                                       None))
         self.label_3.setText(QCoreApplication.translate("Capture", u"\u4e0b\u8f7d\u5730\u5740\uff1a", None))
-        self.pushButton_path.setText(QCoreApplication.translate("Capture", u"\u9009\u62e9\u4e0b\u8f7d\u5730\u5740", None))
+        self.pushButton_path.setText(
+            QCoreApplication.translate("Capture", u"\u9009\u62e9\u4e0b\u8f7d\u5730\u5740", None))
         self.pushButton.setText(QCoreApplication.translate("Capture", u"\u5f00\u59cb\u6355\u83b7", None))
-    # retranslateUi
-

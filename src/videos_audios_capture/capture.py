@@ -37,8 +37,8 @@ def capture(url, path):
             filename = os.path.basename(video_url)
             with open(os.path.join(path, filename), 'wb') as f:
                 f.write(video_response.content)
-        except:
-            pass
+        except Exception:
+            print("Some error occurred, maybe you should try again!")
 
     for audio_link in audio_links:
         try:
@@ -49,7 +49,7 @@ def capture(url, path):
             filename = os.path.basename(audio_url)
             with open(os.path.join(path, filename), 'wb') as f:
                 f.write(audio_response.content)
-        except:
-            pass
+        except Exception:
+            print("Some error occurred, maybe you should try again!")
 
     return True

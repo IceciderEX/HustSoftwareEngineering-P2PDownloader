@@ -1,4 +1,3 @@
-#@auther 李鑫煜
 import os
 import requests
 import subprocess
@@ -12,10 +11,15 @@ logging.basicConfig(level=logging.INFO)
 
 download_mutex = threading.Lock()
 successful_downloads = set()
-start_time=0
+start_time = 0
 
-# Function to download the M3U8 file
+
 def download_m3u8(url):
+    """
+    下载url对应的m3u8视频
+    :param url: m3u8 url
+    :return: response（m3u8）
+    """
     response = requests.get(url)
     if response.status_code == 200:
         return response.text
@@ -25,15 +29,30 @@ def download_m3u8(url):
 
 # Function to parse the M3U8 playlist and extract segment URLs
 def parse_m3u8(m3u8_content, m3u8_url):
+    """
+    解析m3u8文件，得到.ts文件的请求url
+    :param m3u8_content:
+    :param m3u8_url:
+    :return:
+    """
     lines = m3u8_content.split('\n')
+    # .ts文件的请求url
     segment_urls = [urljoin(m3u8_url, line.strip()) for line in lines if line and not line.startswith("#")]
     return segment_urls
 
+
 def download_segment(segment_url, output_dir, index):
-    max_retries = 10  # Maximum number of retry attempts
+    """
+    下载各个.ts文件
+    :param segment_url:
+    :param output_dir:
+    :param index:
+    :return:
+    """
+    max_retries = 10  # 最大请求次数
     retries = 0
 
-    # Check if another thread has successfully downloaded the same segment
+    # 检测其他线程是否已经成功下载这个.ts文件，若是则返回
     with download_mutex:
         if index in successful_downloads:
             return
@@ -44,6 +63,7 @@ def download_segment(segment_url, output_dir, index):
             if retries >= 1:
                 print(f"Re-Request for segment: {index}")
             if response.status_code == 200:
+                # 保存.ts文件到本地
                 segment_filename = os.path.join(output_dir, f"segment_{index:04d}.ts")
                 with open(segment_filename, "wb") as f:
                     for chunk in response.iter_content(chunk_size=1024):
@@ -51,11 +71,11 @@ def download_segment(segment_url, output_dir, index):
                             f.write(chunk)
                     print(f"Downloading segment_{index:04d}.ts", end="")
 
-                # Mark the segment as successfully downloaded
+                # 标记已经下载成功
                 with download_mutex:
                     successful_downloads.add(index)
 
-                return  # Successful download, exit the loop
+                return
             else:
                 print(f"Failed to download segment_{index:04d}.ts. Retrying...", end="")
         except Exception as e:
@@ -66,13 +86,19 @@ def download_segment(segment_url, output_dir, index):
 
     print(f"Failed to download segment_{index:04d}.ts after {max_retries} retries.", end="")
 
-# Function to download all segments
+
 def download_segments(segment_urls, output_dir):
+    """
+    下载所有的.ts文件
+    :param segment_urls: ts url
+    :param output_dir: 下载路径
+    :return: none
+    """
     os.makedirs(output_dir, exist_ok=True)
     total_segments = len(segment_urls)
     downloaded_segments = 0
     total_bytes = 0
-    before_btyes = 0
+    before_bytes = 0
     before_time = time.time()
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
@@ -85,10 +111,10 @@ def download_segments(segment_urls, output_dir):
                 segment_size = os.path.getsize(os.path.join(output_dir, f"segment_{downloaded_segments - 1:04d}.ts"))
                 total_bytes += segment_size
 
-                # Calculate progress and speed
+                # 计算进度以及下载速度
                 progress = downloaded_segments / total_segments * 100
 
-                downloaded_bytes = total_bytes - before_btyes
+                downloaded_bytes = total_bytes - before_bytes
                 downloaded_time = time.time() - before_time
                 download_speed = 0
                 if downloaded_time != 0:
@@ -96,13 +122,20 @@ def download_segments(segment_urls, output_dir):
                 show_speed = download_speed / 1024  # Current speed in KB/s
 
                 print(
-                    f"Downloaded {downloaded_segments}/{total_segments} segments - {progress:.2f}% complete ({show_speed:.2f} KB/s)", end="")
+                    f"Downloaded {downloaded_segments}/{total_segments} segments - {progress:.2f}% complete ({show_speed:.2f} KB/s)",
+                    end="")
 
             except Exception as e:
                 print(f"Downloading of {url} generated an exception: {str(e)}", end="")
 
-# Function to merge segments
+
 def merge_segments(output_dir, output_filename):
+    """
+    合并所有的.ts文件成一个m3u8视频
+    :param output_dir:
+    :param output_filename:
+    :return:
+    """
     ts_files = [os.path.join(output_dir, filename) for filename in os.listdir(output_dir) if filename.endswith(".ts")]
     try:
         cmd = ['ffmpeg', '-i', 'concat:' + '|'.join(ts_files), '-c', 'copy', output_filename]
@@ -121,28 +154,25 @@ def clean_up(ts_files):
     try:
         for ts_file in ts_files:
             os.remove(ts_file)
-        # print(f'Deleted all ts_file')
     except Exception as e:
         print(f'An error occurred while cleaning up files: {e}', end="")
 
-def jiekou(m3u8_url,output_dir,filename):
-#if __name__ == "__main__":
-    # Define the M3U8 URL you want to download
-    #m3u8_url = input("input the M3U8 URL you want to download: ")
 
-    # Define the output directory and filename for the final video
-    #output_dir = input("input the directory for the video to download: ")
-    #filename = input("input the filename for the video you want to download: ")
-
-    #output_filename=output_dir+"\\"+filename
-    m3u8_url= m3u8_url.replace("al-vod", "videotx-platform")
-    output_filename=os.path.join(output_dir,filename)
+def interface_ui(m3u8_url, output_dir, filename):
+    """
+    提供给UI界面的接口
+    :param output_dir: 保存路径
+    :param m3u8_url: m3u8_url
+    :param filename: 保存文件名
+    :return: none
+    """
+    m3u8_url = m3u8_url.replace("al-vod", "videotx-platform")
+    output_filename = os.path.join(output_dir, filename)
 
     try:
         m3u8_content = requests.get(m3u8_url).text
         segment_urls = [urljoin(m3u8_url, line.strip()) for line in m3u8_content.split('\n') if
                         line and not line.startswith("#")]
-        start_time = time.time()
         download_segments(segment_urls, output_dir)
         merge_segments(output_dir, output_filename)
     except Exception as e:

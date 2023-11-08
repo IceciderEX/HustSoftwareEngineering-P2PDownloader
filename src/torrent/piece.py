@@ -42,7 +42,6 @@ class Piece:
     """
     Piece是Torrent文件被划分的最小单位,通过Piece来管理Block
     """
-
     def __init__(self, index: int, blocks: [], hash_value):
         """
         :param index: 在整个文件中的index
@@ -68,7 +67,7 @@ class Piece:
         if missing:
             missing[0].status = Block.Pending
             return missing[0]
-        pending = [b for b in self.blocks if b.status is Block.Pending]  # 防止有些pending blocks卡在队列里
+        pending = [b for b in self.blocks if b.status is Block.Pending]  # debug：防止有些pending blocks卡在队列里
         cur_time = round(time.time())
         if pending and cur_time - pending[0].time > 60:
             pending[0].status = Block.Pending

@@ -11,7 +11,7 @@ from src.gui.small_capture import Ui_small_capture
 from src.gui.mainwindow import Ui_MainWindow
 from src.gui.torrent import Ui_torrent
 from src.gui.m3u8 import Ui_m3u8
-from src.m3u8.m3u8 import jiekou
+from src.m3u8.m3u8 import interface_ui
 from src.magnetlink.magnetlinkToTorrent import magnet2torrent
 from src.movie.videoplayer import MainWindow
 from src.torrent.client import TorrentClient
@@ -54,7 +54,7 @@ class m3u8_thread(QThread):
         self.name = name
 
     def run(self):
-        jiekou(self.url, self.path, self.name)
+        interface_ui(self.url, self.path, self.name)
 
         # 通知主线程处理完成
         self.log_signal.emit("m3u8_thread finished.\n")

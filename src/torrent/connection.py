@@ -27,7 +27,7 @@ class PeerStreamIterator:
     """
     接受与Peer通信时回传的信息,并根据信息的类型封装成不同的Message类,返回给上一级调用
     """
-    CHUNK_SIZE = 10 * 1024
+    CHUNK_SIZE = 10 * 1024  # 一次接收的数据大小
 
     def __init__(self, reader: StreamReader, initial: bytes = None):
         self.reader = reader
@@ -54,7 +54,7 @@ class PeerStreamIterator:
                 else:
                     logging.debug('No data read from stream')
                     if self.buffer:
-                        message = self.parse()
+                        message = self.parse()  # 解析收到的message
                         if message:
                             return message
                     raise StopAsyncIteration()
@@ -90,7 +90,7 @@ class PeerStreamIterator:
                 def _data():
                     return self.buffer[:header_length + message_length]
 
-                msg_id = struct.unpack('>b', self.buffer[4:5])[0]  # 消息id的一个字节
+                msg_id = struct.unpack('>b', self.buffer[4:5])[0]  # 消息id的一个字节表示（0-8）
 
                 if msg_id == MsgId.Choke:
                     _consume()
@@ -132,6 +132,9 @@ class PeerStreamIterator:
 
 
 class UDPPeerStreamIterator:
+    """
+        :return: 根据UDP tracker's Peer回传的信息解码并封装成不同的Message类
+    """
     CHUNK_SIZE = 10 * 1024
 
     def __init__(self, udp_socket, initial: bytes = None):
@@ -174,7 +177,6 @@ class UDPPeerStreamIterator:
 
     def parse(self):
         # 根据 UDP 数据包的格式解析数据，返回适当的 Message 类
-        # 你需要根据你的协议来解析 UDP 数据包
         header_length = 4
 
         if len(self.buffer) > 4:
@@ -238,7 +240,7 @@ INTERESTED = "interested"
 PENDING = 'pending_request'
 PAUSED = "paused"
 
-TIME_OUT = 5
+TIME_OUT = 5  # Peer连接的最大时间
 
 
 class Connection:
@@ -360,8 +362,8 @@ class Connection:
         self.queue.task_done()
 
     async def _start(self):
-        """实现和Peer的通信,交流,数据传输,数据解析
-
+        """
+        实现和Peer的通信,交流,数据传输,数据解析
         :raise: (ConnectionRefusedError, TimeoutError):Unable to connect to peer
         :raise: (ConnectionResetError, CancelledError):Connection closed
         :raise: RuntimeError:A runtime error occured
@@ -370,19 +372,19 @@ class Connection:
 
         while STOPPED not in self.my_state:
             ip, port, use_udp = await self.queue.get()
-            if ip == '255.255.255.255' or ip == '0.0.0.0':  # 广播IP
+            if ip == '255.255.255.255' or ip == '0.0.0.0':  # 广播IP，不连接
                 continue
             logging.info(f"Got assigned peer with {ip}:{port}")
             try:
-                if use_udp:
+                if use_udp:  # UDP tracker返回的peer
                     self.ip = ip
                     self.port = port
                     self.sock = await asyncio.wait_for(asyncudp.create_socket(remote_addr=(ip, port)),
-                                                       timeout=TIME_OUT)  # 设置最大等待时间为5s
+                                                       timeout=TIME_OUT)  # 设置最大等待时间为TIME_OUT
                     self.use_udp = True
-                else:
+                else:  # Http tracker返回的peer
                     self.reader, self.writer = await asyncio.wait_for(asyncio.open_connection(ip, port),
-                                                                      timeout=TIME_OUT)  # 设置最大等待时间为5s
+                                                                      timeout=TIME_OUT)  # 设置最大等待时间为TIME_OUT
                 logging.info(f"Connecting to peer {ip}:{port}")
                 buffer = await asyncio.wait_for(self._handshake(), timeout=TIME_OUT)
                 self.my_state.append(CHOKED)
@@ -484,10 +486,18 @@ class Connection:
             await self.cancel()
 
     def pause(self):
+        """
+        暂停与peer的通信
+        :return: none
+        """
         self.my_state.append(PAUSED)
         self.pause_event.clear()
 
     def restart(self):
+        """
+        重新开始与peer的通信
+        :return: none
+        """
         if PAUSED in self.my_state:
             self.my_state.remove(PAUSED)
             self.pause_event.set()
