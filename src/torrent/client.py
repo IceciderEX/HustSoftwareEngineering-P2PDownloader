@@ -51,7 +51,9 @@ class TorrentClient:
         """
         self.abort = True
         logging.info(f'Download Canceled')
-        for file_path in self.piece_manager.files:
+        for file_info in self.piece_manager.files:
+            file_path_parts = [self.piece_manager.d_path] + file_info['path']
+            file_path = os.path.join(*file_path_parts)
             if os.path.exists(file_path):
                 os.remove(file_path)
         for peer in self.peers:
@@ -134,7 +136,7 @@ class TorrentClient:
             except ConnectionError:
                 logging.info("UDP unable to connect")
             await asyncio.sleep(12)
-        await self.stop()
+        self.stop()
 
     def update_download_speed(self):
         """
@@ -166,7 +168,6 @@ class TorrentClient:
         while not self.piece_manager.finished:
             self.update_download_speed()
             await asyncio.sleep(1)
-        self.stop()
 
 
     def return_peers(self):
@@ -215,5 +216,4 @@ class TorrentClient:
             self.download_Progress = self.piece_manager.download_progress()
             logging.info(f'下载进度：{self.download_Progress:.2f}')
             await asyncio.sleep(1)
-        self.stop()
 

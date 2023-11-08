@@ -132,6 +132,8 @@ class torrent_tread_start(QThread):
         except CancelledError:
             logging.warning('Event loop was canceled')
 
+
+
 class torrent_ui(QWidget, Ui_torrent):
     def __init__(self):
         super().__init__()
