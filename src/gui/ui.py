@@ -205,6 +205,7 @@ class torrent_ui(QWidget, Ui_torrent):
 
     def stop(self):
         self.thread_.stop_()
+        self.close()
 
 class main_ui(QWidget, Ui_MainWindow):
     def __init__(self):

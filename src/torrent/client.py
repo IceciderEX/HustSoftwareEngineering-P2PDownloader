@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import time
 from asyncio import Queue, sleep
 from typing import List
@@ -50,6 +51,9 @@ class TorrentClient:
         """
         self.abort = True
         logging.info(f'Download Canceled')
+        for file_path in self.piece_manager.files:
+            if os.path.exists(file_path):
+                os.remove(file_path)
         for peer in self.peers:
             peer.stop()
         for tracker in self.trackers:
