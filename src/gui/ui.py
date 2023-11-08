@@ -43,7 +43,7 @@ class m3u8_ui(QWidget, Ui_m3u8):
         # print(name)
         jiekou(m3u8_url, path, name)
 
-
+'''
 class magnetlink_ui(QWidget, Ui_magnetlink):
     def __init__(self):
         super().__init__()
@@ -64,7 +64,7 @@ class magnetlink_ui(QWidget, Ui_magnetlink):
         # print(path)
         # print(name)
         jiekou(m3u8_url, path, name)
-
+'''
 
 class small_capture_ui(QWidget, Ui_small_capture):
     def __init__(self):
@@ -249,9 +249,9 @@ class main_ui(QWidget, Ui_MainWindow):
         self.ui = capture_ui()
         self.ui.show()
 
-    def magnetlink(self):
-        self.ui = magnetlink_ui()
-        self.ui.show()
+    #def magnetlink(self):
+    #    self.ui = magnetlink_ui()
+    #    self.ui.show()
 
 
 if __name__ == '__main__':

@@ -129,7 +129,7 @@ class TorrentClient:
             except ConnectionError:
                 logging.info("UDP unable to connect")
             await asyncio.sleep(12)
-        self.stop()
+        await self.stop()
 
     def update_download_speed(self):
         """
