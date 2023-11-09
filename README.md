@@ -27,7 +27,8 @@
 2. lab1 分支旨在帮助学生了解 Torrent文件的编解码和torrent文件格式，
 3. lab2 分支旨在帮助学生了解 Http Tracker通信协议
 4. lab3 分支旨在帮助学生了解 Peer wire 通信协议
-5. master 分支集成了所有功能
+5. lab4 分支旨在帮助学生了解 磁力文件和种子文件的转化
+6. master 分支集成了所有功能
 
 #### 功能介绍
 
