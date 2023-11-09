@@ -73,10 +73,8 @@ class TrackerResponse:
             raise NotImplementedError()
         else:
             logging.debug('Binary model peers are returned by tracker')
-
-            peers = [peers[i:i + 6] for i in range(0, len(peers), 6)]
-            return [(socket.inet_ntoa(p[:4]), _decode_port(p[4:]))
-                    for p in peers]
+            # TODO 返回解析后的peers信息(紧凑模式)
+            pass
 
 
 def _calculate_peer_id():
@@ -91,8 +89,6 @@ class Tracker:
         self.torrent = torrent
         self.peer_id = _calculate_peer_id()  # urlen编码的 20 字节字符串
         self.http_client: Optional[ClientSession] = None
-        self.sock: Optional[Socket] = None
-        self.use_udp = self.torrent.announce.startswith("udp")
 
     async def connect(self, first: bool = False, downloaded: int = 0, uploaded: int = 0) -> TrackerResponse:
         """根据announce的类型来决定是使用http协议还是udp协议
@@ -103,81 +99,20 @@ class Tracker:
         :return: TrackerResponse: 对通信结果的封装
         :raise: ConnectionError: Unable to connect to tracker
         """
-        if self.use_udp:
-            match = re.search(r'udp://([^:/]+:\d+)/', self.torrent.announce)
-            if match:
-                tracker_address = match.group(1)
-                remote_ip, remote_port = tracker_address.split(":")
-                remote_port = int(remote_port)
-                print(remote_ip, remote_port)
-            else:
+        if self.http_client is None:
+            self.http_client = aiohttp.ClientSession()
+        # TODO 填充params,使代码能与 Tracker正常通信
+        params = {}
+        url = self.torrent.announce + "?" + urllib.parse.urlencode(params)
+        logging.info('Connecting to tracker at: ' + url)
+        async with self.http_client.get(url) as resp:
+            if not resp.status == 200:
                 raise ConnectionError('Unable to connect to tracker')
-            if self.sock is None:
-                self.sock = await asyncudp.create_socket(remote_addr=(remote_ip, remote_port))
-            connect_request = struct.pack('>QII', 0x41727101980, 0, 99)
-            # print("send connect request")
-            self.sock.sendto(connect_request)
-            datagram, remote_addr = await self.sock.recvfrom()
-            action, transaction_id, connection_id = struct.unpack('>IIQ', datagram)
-            if not action == 0 and not transaction_id == 99:
-                raise ConnectionError('Unable to connect to tracker')
-            announce_request = struct.pack(
-                '>QII20s20sQQQIIIiH',
-                connection_id,  # Connection ID
-                1,  # Action (Announce请求)
-                99,  # Transaction ID
-                self.torrent.info_hash,  # Info hash
-                self.peer_id.encode('utf-8'),  # Peer ID
-                0,  # Downloaded
-                0,  # Left
-                0,  # Uploaded
-                1 if first else 0,  # Event (0表示无事件,1 started)
-                0,  # IP address (0表示默认)
-                0,  # key
-                -1,  # num want -1 default
-                random.randint(1023, 8888)  # Port
-            )
-            # print("announce request")
-            self.sock.sendto(announce_request)
-            datagram, remote_addr = await self.sock.recvfrom()
-            # print(len(datagram))
-            try:
-                action, transaction_id, interval, leechers, seeders = struct.unpack('>IIIII', datagram[:20])
-                # print(f"{action=},{transaction_id=},{interval=},{leechers=},{seeders=}")
-                dict_data = {b"action": action, b"transaction_id": transaction_id, b"interval": interval,
-                             b"leechers": leechers,
-                             b"seeders": seeders, b"peers": datagram[20:]}
-                print(len(datagram[20:]))
-                return TrackerResponse(dict_data)
-            except Exception as e:
-                raise ConnectionError('Unable to connect to tracker')
-        else:
-            if self.http_client is None:
-                self.http_client = aiohttp.ClientSession()
-            params = {
-                'info_hash': self.torrent.info_hash,
-                'peer_id': self.peer_id,
-                'port': [x for x in range(6881, 6890)][random.randint(0, 8)],
-                'uploaded': uploaded,
-                'downloaded': downloaded,
-                'left': self.torrent.length - downloaded,
-                'compact': 1
-            }
-            if first:
-                params['event'] = 'started'
-            url = self.torrent.announce + "?" + urllib.parse.urlencode(params)
-            logging.info('Connecting to tracker at: ' + url)
-            async with self.http_client.get(url) as resp:
-                if not resp.status == 200:
-                    raise ConnectionError('Unable to connect to tracker')
-                data = await resp.read()  # bencoded dictionary
-                return TrackerResponse(bencoding.Decode(data).decode())
+            data = await resp.read()  # bencoded dictionary
+            return TrackerResponse(bencoding.Decode(data).decode())
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """
         关闭掉异步资源
         """
-        if self.use_udp:
-            self.sock.close()
-        else:
-            self.http_client.close()
+        await self.http_client.close()
