@@ -98,7 +98,6 @@ class Ui_m3u8(object):
         self.retranslateUi(m3u8)
 
         QMetaObject.connectSlotsByName(m3u8)
-    # setupUi
 
     def retranslateUi(self, m3u8):
         m3u8.setWindowTitle(QCoreApplication.translate("m3u8", u"m3u8", None))
@@ -110,5 +109,4 @@ class Ui_m3u8(object):
         self.label_2.setText(QCoreApplication.translate("m3u8", u"m3u8\u8bf7\u6c42url\uff1a", None))
         self.label_4.setText(QCoreApplication.translate("m3u8", u"\u4fdd\u5b58\u6587\u4ef6\u540d\uff1a", None))
         self.label.setText(QCoreApplication.translate("m3u8", u"m3u8\u4e0b\u8f7d\u5668", None))
-    # retranslateUi
 

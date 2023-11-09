@@ -19,7 +19,7 @@ def get_torrent(url, file_path):
             f.write(response.content)
         print("Torrent file saved to", decoded_text)
     elif response.status_code == 504:
-        print("Overtime, Maybe this magnetlink cannot convert to torrent")
+        print("Overtime, Maybe this magnetlink cannot convert to torrent!")
     else:
         print("Failed to retrieve the torrent file. HTTP status code:", response.status_code)
 
@@ -34,4 +34,3 @@ def magnet2torrent(magnetlink: str, file_path: str):
     parsed_link = magnetlinkParser(magnetlink=magnetlink).parse_magnetlink()
     url = "https://m2t.lolicon.app/m/" + parsed_link.info_hash
     get_torrent(url, file_path)
-

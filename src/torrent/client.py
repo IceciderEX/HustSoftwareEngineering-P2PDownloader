@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import time
 from asyncio import Queue, sleep
 from typing import List
@@ -47,16 +48,22 @@ class TorrentClient:
         while not self.available_peers.empty():
             self.available_peers.get_nowait()
 
-    async def stop(self):
+    def stop(self):
         """
         终止下载torrent（不能再恢复）
         :return:
         """
         self.abort = True
+        logging.info(f'Download Canceled')
+        for file_info in self.piece_manager.files:
+            file_path_parts = [self.piece_manager.d_path] + file_info['path']
+            file_path = os.path.join(*file_path_parts)
+            if os.path.exists(file_path):
+                os.remove(file_path)
         for peer in self.peers:
             peer.stop()
         for tracker in self.trackers:
-            await tracker.close()
+            tracker.close()
 
     def _on_block_retrieved(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes):
         """
@@ -133,8 +140,8 @@ class TorrentClient:
                         index += 1
             except ConnectionError:
                 logging.info("UDP unable to connect")
-            await asyncio.sleep(interval)  # 等待INTERVAL时间间隔，再次请求tracker
-        await self.stop()
+            await asyncio.sleep(15)  # 等待INTERVAL时间间隔，再次请求tracker
+        self.stop()
 
     def update_download_speed(self):
         """
@@ -169,8 +176,7 @@ class TorrentClient:
         """
         while not self.piece_manager.finished:
             self.update_download_speed()
-            await asyncio.sleep(2)
-        await self.stop()
+            await asyncio.sleep(1)
 
     def return_peers(self):
         """
@@ -217,5 +223,4 @@ class TorrentClient:
         while not self.piece_manager.finished:
             self.download_Progress = self.piece_manager.download_progress()
             # logging.info(f'下载进度：{self.download_Progress:.2f}')
-            await asyncio.sleep(2)
-        await self.stop()
+            await asyncio.sleep(1)

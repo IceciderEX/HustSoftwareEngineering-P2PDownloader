@@ -55,9 +55,9 @@ class m3u8_thread(QThread):
 
     def run(self):
         interface_ui(self.url, self.path, self.name)
-
         # 通知主线程处理完成
         self.log_signal.emit("m3u8_thread finished.\n")
+
 
 class magnetlink_thread(QThread):
     log_signal = Signal(str)
@@ -76,38 +76,54 @@ class magnetlink_thread(QThread):
 class torrent_tread_start(QThread):
     signal_speed = Signal(float)
     signal_progress = Signal(float)
+    signal_done = Signal(bool)
 
     def __init__(self, file, path):
         super().__init__()
         self.file = file
         self.path = path
+        self.client = TorrentClient(Torrent(self.file))
 
     async def speed(self, client):
         while not client.piece_manager.finished:
             self.signal_speed.emit(client.download_speed)
             await asyncio.sleep(1)
+        self.signal_speed.emit(0)
         client.stop()
 
     async def progress(self, client):
         while not client.piece_manager.finished:
             self.signal_progress.emit(client.download_Progress)
             await asyncio.sleep(1)
+        self.signal_progress.emit(100)
         client.stop()
+
+    def restart_(self):
+        # 重新开始下载
+        self.client.restart()
+
+    def pause_(self):
+        # 暂停下载
+        self.client.pause()
+
+    def stop_(self):
+        # 停止下载
+        self.client.stop()
 
     def run(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        client = TorrentClient(Torrent(self.file))
-        client.find_download_place(self.path)
-        task = loop.create_task(client.start())
-        task2 = loop.create_task(client.return_download_time())
-        task3 = loop.create_task(client.download_progress())
-        task4 = loop.create_task(self.speed(client))
-        task5 = loop.create_task(self.progress(client))
+        self.client = TorrentClient(Torrent(self.file))
+        self.client.find_download_place(self.path)
+        task = loop.create_task(self.client.start())
+        task2 = loop.create_task(self.client.return_download_time())
+        task3 = loop.create_task(self.client.download_progress())
+        task4 = loop.create_task(self.speed(self.client))
+        task5 = loop.create_task(self.progress(self.client))
 
         def signal_handler(*_):
             logging.info('Exiting, please wait until everything is shutdown...')
-            client.stop()
+            self.client.stop()
             task.cancel()
 
             signal.signal(signal.SIGINT, signal_handler)
@@ -219,6 +235,8 @@ class torrent_ui(QWidget, Ui_torrent):
         self.ui.pushButton_start.clicked.connect(self.start)
         self.ui.pushButton_stop.clicked.connect(self.stop)
         self.ui.progressBar.setValue(0)
+        self.ui.progressBar.setFormat("{:.1f}%".format(0.0))
+        self.thread_ = None
 
     def open_torrent_file_dialog(self):
         file_dialog = QFileDialog(self)
@@ -226,26 +244,6 @@ class torrent_ui(QWidget, Ui_torrent):
         file_dialog.setViewMode(QFileDialog.List)
         torrent_file, _ = file_dialog.getOpenFileName(self, "选择 .torrent 文件", "", "Torrent Files (*.torrent)")
         self.ui.pushButton.setText(torrent_file)
-
-        # if torrent_file:
-        #     logging.basicConfig(level=logging.INFO)
-        #     loop = asyncio.get_event_loop()
-        #     client = TorrentClient(Torrent(torrent_file))
-        #     task = loop.create_task(client.start())
-        # #     task2 = loop.create_task(client.return_download_time())
-        # #
-        # #     def signal_handler(*_):
-        # #         logging.info('Exiting, please wait until everything is shutdown...')
-        # #         client.stop()
-        # #         task.cancel()
-        # #
-        #     # signal.signal(signal.SIGINT, signal_handler)
-        #
-        #     # try:
-        #     loop.run_until_complete(task)
-        # #         loop.run_until_complete(task2)
-        # #     except CancelledError:
-        # #         logging.warning('Event loop was canceled')
 
     def download_place(self):
         path = QFileDialog.getExistingDirectory(self)
@@ -256,30 +254,23 @@ class torrent_ui(QWidget, Ui_torrent):
         self.thread_.signal_progress.connect(self.callback_progress)
         self.thread_.signal_speed.connect(self.callback_speed)
         self.thread_.start()
-        # loop = asyncio.get_event_loop()
-        # client = TorrentClient(Torrent(self.ui.pushButton.text()))
-        # task = loop.create_task(client.start())
-        # loop.run_until_complete(task)
-        # progressBar_value = PieceManager.download_progress(self)
-        # self.ui.progressBar.setValue(self, progressBar_value)
 
     def callback_progress(self, result):
         self.ui.progressBar.setValue(result)
+        self.ui.progressBar.setFormat("{:.1f}%".format(result))
 
     def callback_speed(self, result):
-        self.ui.label_2.setText(f"下载速度：   {result:.2f} KB/S")
+        self.ui.label_2.setText(f"下载速度：{result:.2f} KB/S")
 
     def restart(self):
-        client = TorrentClient(Torrent(self.ui.pushButton.text()))
-        client.restart()
+        self.thread_.restart_()
 
     def pause(self):
-        client = TorrentClient(Torrent(self.ui.pushButton.text()))
-        client.pause()
+        self.thread_.pause_()
 
     def stop(self):
-        client = TorrentClient(Torrent(self.ui.pushButton.text()))
-        client.stop()
+        self.thread_.stop_()
+        self.close()
 
 
 class main_ui(QWidget, Ui_MainWindow):

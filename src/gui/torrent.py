@@ -1,19 +1,3 @@
-# -*- coding: utf-8 -*-
-import asyncio
-import logging
-import signal
-import sys
-from asyncio import CancelledError
-from io import StringIO
-
-################################################################################
-## Form generated from reading UI file 'torrent.ui'
-##
-## Created by: Qt User Interface Compiler version 6.5.3
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
-
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt)
@@ -96,7 +80,6 @@ class Ui_torrent(object):
         self.retranslateUi(torrent)
 
         QMetaObject.connectSlotsByName(torrent)
-    # setupUi
 
     def retranslateUi(self, torrent):
         torrent.setWindowTitle(QCoreApplication.translate("torrent", u"torrent\u6587\u4ef6\u9009\u62e9", None))
@@ -108,4 +91,3 @@ class Ui_torrent(object):
         self.pushButton_path.setText(QCoreApplication.translate("torrent", u"\u9009\u62e9\u4e0b\u8f7d\u8def\u5f84", None))
         self.pushButton.setText(QCoreApplication.translate("torrent", u"\u9009\u62e9.torrent\u6587\u4ef6", None))
         self.label_2.setText(QCoreApplication.translate("torrent", u"TextLabel", None))
-    # retranslateUi

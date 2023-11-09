@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-
-################################################################################
-## Form generated from reading UI file 'Capture.ui'
-##
-## Created by: Qt User Interface Compiler version 6.5.3
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
-
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
                             QMetaObject, QObject, QPoint, QRect,
                             QSize, QTime, QUrl, Qt)
@@ -28,11 +18,17 @@ class Ui_Capture(object):
         if not Capture.objectName():
             Capture.setObjectName(u"Capture")
         Capture.resize(351, 261)
+
+        # 设置窗口图标为Beholder
         icon = QIcon()
         icon.addFile(u"resource/logo.ico", QSize(), QIcon.Normal, QIcon.Off)
         Capture.setWindowIcon(icon)
+
+        # 创建垂直布局，用于安排界面元素的垂直排列
         self.verticalLayout = QVBoxLayout(Capture)
         self.verticalLayout.setObjectName(u"verticalLayout")
+
+        # 创建标题标签
         self.label_2 = QLabel(Capture)
         self.label_2.setObjectName(u"label_2")
         font = QFont()
@@ -42,8 +38,9 @@ class Ui_Capture(object):
         self.label_2.setAlignment(Qt.AlignCenter)
         self.label_2.setIndent(-1)
 
-        self.verticalLayout.addWidget(self.label_2)
+        self.verticalLayout.addWidget(self.label_2)  # 将标题标签添加到布局中
 
+        # 创建标签用于显示提示消息
         self.label = QLabel(Capture)
         self.label.setObjectName(u"label")
         font1 = QFont()
@@ -53,31 +50,35 @@ class Ui_Capture(object):
 
         self.verticalLayout.addWidget(self.label)
 
+        # 创建文本框，用于输入捕获的网址
         self.lineEdit = QLineEdit(Capture)
         self.lineEdit.setObjectName(u"lineEdit")
         self.lineEdit.setAlignment(Qt.AlignCenter)
 
         self.verticalLayout.addWidget(self.lineEdit)
 
+        # 创建标签，用于显示“下载地址”字样
         self.label_3 = QLabel(Capture)
         self.label_3.setObjectName(u"label_3")
         self.label_3.setFont(font1)
 
         self.verticalLayout.addWidget(self.label_3)
 
+        # 创建按钮，用于选择下载路径
         self.pushButton_path = QPushButton(Capture)
         self.pushButton_path.setObjectName(u"pushButton_path")
 
         self.verticalLayout.addWidget(self.pushButton_path)
 
+        # 创建按钮，用于开始捕获操作
         self.pushButton = QPushButton(Capture)
         self.pushButton.setObjectName(u"pushButton")
 
         self.verticalLayout.addWidget(self.pushButton)
 
-        self.retranslateUi(Capture)
+        self.retranslateUi(Capture)  # 设置UI元素的文本内容
 
-        QMetaObject.connectSlotsByName(Capture)
+        QMetaObject.connectSlotsByName(Capture)  # 连接信号和槽
 
     def retranslateUi(self, Capture):
         Capture.setWindowTitle(QCoreApplication.translate("Capture", u"Capture", None))
