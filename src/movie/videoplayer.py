@@ -175,14 +175,8 @@ class MainWindow(QMainWindow):
             self._mime_types = get_supported_mime_types()
             if (is_windows and AVI not in self._mime_types):
                 self._mime_types.append(AVI)
-            elif MP4 not in self._mime_types: # 增加MP4格式
-                self._mime_types.append(MP4)
 
         file_dialog.setMimeTypeFilters(self._mime_types)
-
-        default_mimetype = AVI if is_windows else MP4
-        if default_mimetype in self._mime_types:
-            file_dialog.selectMimeTypeFilter(default_mimetype)
 
         movies_location = QStandardPaths.writableLocation(QStandardPaths.MoviesLocation)
         file_dialog.setDirectory(movies_location)
