@@ -199,6 +199,20 @@ class small_capture_ui(QWidget, Ui_small_capture):
         # self.ui.label.setText("下载失败")
 
 
+class capture_thread(QThread):
+    log_signal = Signal(bool)
+
+    def __init__(self, url, path):
+        super().__init__()
+        self.url = url
+        self.path = path
+
+    def run(self):
+        result = capture(self.url, self.path)
+        # 通知主线程处理完成
+        self.log_signal.emit(result)
+
+
 class capture_ui(QWidget, Ui_Capture):
     def __init__(self):
         super().__init__()
@@ -206,6 +220,7 @@ class capture_ui(QWidget, Ui_Capture):
         self.ui.setupUi(self)
         self.ui.pushButton.clicked.connect(self.start_capture)
         self.ui.pushButton_path.clicked.connect(self.select_path)
+        self.worker = None
 
     def select_path(self):
         path = QFileDialog.getExistingDirectory(self)
@@ -214,10 +229,9 @@ class capture_ui(QWidget, Ui_Capture):
     def start_capture(self):
         url = self.ui.lineEdit.text()
         path = self.ui.pushButton_path.text()
-        print(url)
-        print(path)
-        capture(url, path)
-        print("ok")
+        self.worker = capture_thread(url, path)
+        self.worker.start()
+        self.ui.pushButton.setText("捕获完成！")
 
 
 class torrent_ui(QWidget, Ui_torrent):
