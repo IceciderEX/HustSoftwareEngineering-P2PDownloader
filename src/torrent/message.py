@@ -57,18 +57,13 @@ class HandShake(Message):
         self.peer_id = peer_id
 
     def encode(self):
-        return struct.pack('>B19s8x20s20s',
-                           19, b'BitTorrent protocol', self.info_hash, self.peer_id)
+        # TODO
+        pass
 
     @classmethod
     def decode(cls, data: bytes):
-        length = 49 + 19
-        if len(data) != length:
-            logging.error(f"HandShake Decode: data length {len(data)}")
-            raise RuntimeError("HandShake Decode receive wrong data")
-
-        unpack_data = struct.unpack('>B19s8x20s20s', data)
-        return HandShake(unpack_data[2], unpack_data[3])
+        # TODO
+        pass
 
 
 class KeepAlive:
@@ -85,13 +80,15 @@ class Choke(Message):
 class UnChoke(Message):
 
     def encode(self):
-        return struct.pack('>Ib', 1, MsgId.Unchoke)
+        # TODO
+        pass
 
 
 class Interested(Message):
 
     def encode(self):
-        return struct.pack('>Ib', 1, MsgId.Interested)
+        # TODO
+        pass
 
     def __str__(self):
         return "Interested"
@@ -108,12 +105,13 @@ class Have(Message):
         self.index = index
 
     def encode(self):
-        return struct.pack('>IbI', 5, MsgId.Have, self.index)
+        # TODO
+        pass
 
     @classmethod
     def decode(cls, data: bytes):
-        unpack_data = struct.unpack('>IbI', data)
-        return Have(unpack_data[-1])
+        # TODO
+        pass
 
 
 class BitField(Message):
@@ -145,17 +143,13 @@ class Request(Message):
         self.length = length
 
     def encode(self):
-        return struct.pack('>IbIII',
-                           13,
-                           MsgId.Request,
-                           self.index,
-                           self.begin,
-                           self.length)
+        # TODO
+        pass
 
     @classmethod
     def decode(cls, data: bytes):
-        unpack_data = struct.unpack('>IbIII', data)
-        return Request(unpack_data[2], unpack_data[3], unpack_data[4])
+        # TODO
+        pass
 
 
 class Piece(Message):
