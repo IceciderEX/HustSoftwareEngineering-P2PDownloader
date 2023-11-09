@@ -12,6 +12,7 @@ from typing import Union
 """
 
 # Tokens 用来分词的标志
+# 遇到Token需要特殊处理
 
 TOKEN_INTEGER = b'i'
 
@@ -103,27 +104,20 @@ class Decode:
         return result
 
     def _decode_int(self) -> int:
-        return int(self._read_until(TOKEN_END))
+        # TODO
+        pass
 
     def _decode_str(self) -> bytes:
-        length = int(self._read_until(TOKEN_STRING_SEPERATOR))
-        return self._read(length)
+        # TODO
+        pass
 
     def _decode_list(self):
-        res = []
-        while self._peek() != TOKEN_END:
-            res.append(self.decode())
-        self._consume()
-        return res
+        # TODO
+        pass
 
     def _decode_dict(self):
-        res = OrderedDict()
-        while self._peek() != TOKEN_END:
-            key = self.decode()
-            obj = self.decode()
-            res[key] = obj
-        self._consume()
-        return res
+        # TODO
+        pass
 
 
 class Encode:
@@ -164,33 +158,21 @@ class Encode:
             return None
 
     def _encode_int(self, value: int):
+        # 仅供参考
         return str.encode('i' + str(value) + 'e', 'utf-8')
 
     def _encode_str(self, value: str):
         return str.encode(str(len(value)) + ':' + value, 'utf-8')
 
     def _encode_bytes(self, value: str):
-        result = bytearray()
-        result += str.encode(str(len(value)))
-        result += b':'
-        result += value
-        return result
+        # TODO
+        pass
 
     def _encode_list(self, data):
-        result = bytearray('l', 'utf-8')
-        result += b''.join([self._encode_next(item) for item in data])
-        result += b'e'
-        return result
+        # TODO
+
+        pass
 
     def _encode_dict(self, data: dict) -> bytes:
-        result = bytearray('d', 'utf-8')
-        for k, v in data.items():
-            key = self._encode_next(k)
-            value = self._encode_next(v)
-            if key and value:
-                result += key
-                result += value
-            else:
-                raise RuntimeError('Bad dict')
-        result += b'e'
-        return result
+        # TODO
+        pass
