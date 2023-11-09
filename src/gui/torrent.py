@@ -1,12 +1,8 @@
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
-from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QGridLayout, QLabel, QProgressBar,
-    QPushButton, QSizePolicy, QWidget)
+from PySide6.QtCore import (QCoreApplication, QMetaObject, QSize, Qt)
+from PySide6.QtGui import (QFont, QIcon)
+from PySide6.QtWidgets import (QGridLayout, QLabel, QProgressBar,
+                               QPushButton)
+
 
 class Ui_torrent(object):
     def setupUi(self, torrent):
@@ -72,10 +68,9 @@ class Ui_torrent(object):
 
         self.label_2 = QLabel(torrent)
         self.label_2.setObjectName(u"label_2")
-        self.label_2.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignTop)
+        self.label_2.setAlignment(Qt.AlignLeading | Qt.AlignLeft | Qt.AlignTop)
 
         self.gridLayout.addWidget(self.label_2, 4, 0, 1, 2)
-
 
         self.retranslateUi(torrent)
 
@@ -88,6 +83,7 @@ class Ui_torrent(object):
         self.pushButton_restart.setText(QCoreApplication.translate("torrent", u"\u7ee7\u7eed", None))
         self.pushButton_pause.setText(QCoreApplication.translate("torrent", u"\u6682\u505c", None))
         self.pushButton_stop.setText(QCoreApplication.translate("torrent", u"\u53d6\u6d88", None))
-        self.pushButton_path.setText(QCoreApplication.translate("torrent", u"\u9009\u62e9\u4e0b\u8f7d\u8def\u5f84", None))
+        self.pushButton_path.setText(
+            QCoreApplication.translate("torrent", u"\u9009\u62e9\u4e0b\u8f7d\u8def\u5f84", None))
         self.pushButton.setText(QCoreApplication.translate("torrent", u"\u9009\u62e9.torrent\u6587\u4ef6", None))
         self.label_2.setText(QCoreApplication.translate("torrent", u"TextLabel", None))

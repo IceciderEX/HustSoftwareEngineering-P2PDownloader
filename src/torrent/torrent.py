@@ -3,7 +3,6 @@ from hashlib import sha1
 from typing import List
 
 from src.torrent import bencoding
-import bencodepy
 
 """
     @filename torrent.py

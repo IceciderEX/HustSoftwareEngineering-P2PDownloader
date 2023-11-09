@@ -1,26 +1,24 @@
-import sys
-import os
 import asyncio
 import logging
 import signal
+import sys
 from asyncio import CancelledError
 
+from PySide6.QtCore import QThread, Signal, QObject, Slot
+from PySide6.QtWidgets import QApplication, QWidget, QFileDialog
+
 from src.gui.Capture import Ui_Capture
-from src.gui.magnetlink import Ui_magnetlink
-from src.gui.small_capture import Ui_small_capture
-from src.gui.mainwindow import Ui_MainWindow
-from src.gui.torrent import Ui_torrent
 from src.gui.m3u8 import Ui_m3u8
+from src.gui.magnetlink import Ui_magnetlink
+from src.gui.mainwindow import Ui_MainWindow
+from src.gui.small_capture import Ui_small_capture
+from src.gui.torrent import Ui_torrent
 from src.m3u8.m3u8 import interface_ui
-from src.magnetlink.magnetlinkToTorrent import magnet2torrent
+from src.magnetlink.MagnetlinkToTorrent import magnet2torrent
 from src.movie.videoplayer import MainWindow
 from src.torrent.client import TorrentClient
 from src.torrent.torrent import Torrent
-from PySide6.QtCore import QRunnable, QThreadPool, QThread, Signal, QObject, Slot
 from src.videos_audios_capture.capture import capture
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QTextEdit, \
-    QTextBrowser
 
 
 class StreamRedirect(QObject):

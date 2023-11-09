@@ -1,14 +1,13 @@
-import sys
 import asyncio
 import logging
 import signal
 from asyncio import CancelledError
 
-from src.gui.mainwindow import Ui_MainWindow
+from PySide6.QtWidgets import QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog
+
 from src.torrent.client import TorrentClient
 from src.torrent.torrent import Torrent
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog
+
 
 class TorrentFileSelectorApp(QMainWindow):
     def __init__(self):

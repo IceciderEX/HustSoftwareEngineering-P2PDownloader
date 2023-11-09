@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import logging
 
 ################################################################################
 ## Form generated from reading UI file 'm3u8.ui'
@@ -9,15 +8,10 @@ import logging
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-                            QMetaObject, QObject, QPoint, QRect,
-                            QSize, QTime, QUrl, Qt, Signal)
-from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QGridLayout, QLabel, QLineEdit,
-                               QPushButton, QSizePolicy, QWidget, QVBoxLayout, QTextEdit, QTextBrowser)
+from PySide6.QtCore import (QCoreApplication, QMetaObject, QSize, Qt)
+from PySide6.QtGui import (QFont, QIcon)
+from PySide6.QtWidgets import (QGridLayout, QLabel, QLineEdit,
+                               QPushButton, QTextBrowser)
 
 
 class Ui_m3u8(object):
@@ -102,11 +96,12 @@ class Ui_m3u8(object):
     def retranslateUi(self, m3u8):
         m3u8.setWindowTitle(QCoreApplication.translate("m3u8", u"m3u8", None))
         self.pushButton.setText(QCoreApplication.translate("m3u8", u"\u786e\u8ba4\u4e0b\u8f7d", None))
-        self.lineEdit_name.setPlaceholderText(QCoreApplication.translate("m3u8", u"\u8bf7\u8f93\u5165\u4fdd\u5b58\u7684\u6587\u4ef6\u540d", None))
-        self.lineEdit_m3u8.setPlaceholderText(QCoreApplication.translate("m3u8", u"\u8bf7\u8f93\u5165m3u8\u7f51\u5740", None))
+        self.lineEdit_name.setPlaceholderText(
+            QCoreApplication.translate("m3u8", u"\u8bf7\u8f93\u5165\u4fdd\u5b58\u7684\u6587\u4ef6\u540d", None))
+        self.lineEdit_m3u8.setPlaceholderText(
+            QCoreApplication.translate("m3u8", u"\u8bf7\u8f93\u5165m3u8\u7f51\u5740", None))
         self.pushButton_path.setText(QCoreApplication.translate("m3u8", u"\u9009\u62e9\u4e0b\u8f7d\u8def\u5f84", None))
         self.label_3.setText(QCoreApplication.translate("m3u8", u"\u4e0b\u8f7d\u8def\u5f84\uff1a", None))
         self.label_2.setText(QCoreApplication.translate("m3u8", u"m3u8\u8bf7\u6c42url\uff1a", None))
         self.label_4.setText(QCoreApplication.translate("m3u8", u"\u4fdd\u5b58\u6587\u4ef6\u540d\uff1a", None))
         self.label.setText(QCoreApplication.translate("m3u8", u"m3u8\u4e0b\u8f7d\u5668", None))
-
