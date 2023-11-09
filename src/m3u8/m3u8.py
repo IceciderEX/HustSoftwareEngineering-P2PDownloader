@@ -69,7 +69,7 @@ def download_segment(segment_url, output_dir, index):
                     for chunk in response.iter_content(chunk_size=1024):
                         if chunk:
                             f.write(chunk)
-                    print(f"Downloading segment_{index:04d}.ts", end="")
+                    print(f"Downloading segment_{index:04d}.ts")
 
                 # 标记已经下载成功
                 with download_mutex:
@@ -77,14 +77,14 @@ def download_segment(segment_url, output_dir, index):
 
                 return
             else:
-                print(f"Failed to download segment_{index:04d}.ts. Retrying...", end="")
+                print(f"Failed to download segment_{index:04d}.ts. Retrying...")
         except Exception as e:
-            print(f"An error occurred while downloading segment_{index:04d}.ts: {str(e)}", end="")
+            print(f"An error occurred while downloading segment_{index:04d}.ts: {str(e)}")
 
         retries += 1
         time.sleep(1)
 
-    print(f"Failed to download segment_{index:04d}.ts after {max_retries} retries.", end="")
+    print(f"Failed to download segment_{index:04d}.ts after {max_retries} retries.")
 
 
 def download_segments(segment_urls, output_dir):
@@ -123,10 +123,10 @@ def download_segments(segment_urls, output_dir):
 
                 print(
                     f"Downloaded {downloaded_segments}/{total_segments} segments - {progress:.2f}% complete ({show_speed:.2f} KB/s)",
-                    end="")
+                    )
 
             except Exception as e:
-                print(f"Downloading of {url} generated an exception: {str(e)}", end="")
+                print(f"Downloading of {url} generated an exception: {str(e)}")
 
 
 def merge_segments(output_dir, output_filename):
@@ -140,14 +140,14 @@ def merge_segments(output_dir, output_filename):
     try:
         cmd = ['ffmpeg', '-i', 'concat:' + '|'.join(ts_files), '-c', 'copy', output_filename]
         subprocess.run(cmd, check=True)
-        print(f'Successfully merged {len(ts_files)} .ts files into {output_filename}', end="")
+        print(f'Successfully merged {len(ts_files)} .ts files into {output_filename}')
     except subprocess.CalledProcessError as e:
-        print(f'Error merging files: {e}', end="")
+        print(f'Error merging files: {e}')
     except Exception as e:
-        print(f'An error occurred: {e}', end="")
+        print(f'An error occurred: {e}')
     clean_up(ts_files)
-    print("All .ts files have been cleaned up!", end="")
-    print(f"Video saved as {output_filename}", end="")
+    print("All .ts files have been cleaned up!")
+    print(f"Video saved as {output_filename}")
 
 
 def clean_up(ts_files):
@@ -155,7 +155,7 @@ def clean_up(ts_files):
         for ts_file in ts_files:
             os.remove(ts_file)
     except Exception as e:
-        print(f'An error occurred while cleaning up files: {e}', end="")
+        print(f'An error occurred while cleaning up files: {e}')
 
 
 def interface_ui(m3u8_url, output_dir, filename):
