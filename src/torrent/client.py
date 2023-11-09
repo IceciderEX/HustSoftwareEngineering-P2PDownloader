@@ -11,7 +11,6 @@ from src.torrent.connection import Connection
 
 """
     @filename client.py
-    @author 郑卯杨
     @date 2023/10/10
     @version 1.0
     
