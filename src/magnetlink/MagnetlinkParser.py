@@ -1,12 +1,12 @@
 import logging
 import re
-import asyncio
 
 
 class magnetLink:
     """
     magnetlink封装类，保存info_hash，display_name，trackers
     """
+
     def __init__(self, link, info_hash, display_name, trackers):
         self.link = link
         self.info_hash = info_hash
@@ -57,24 +57,3 @@ class magnetlinkParser:
             trackers = match.group(3).split("&tr=") if match.group(3) else []
 
         return magnetLink(link=self.magnetlink, info_hash=info_hash, display_name=display_name, trackers=trackers)
-
-
-if __name__ == '__main__':
-    #  以下代码用于测试准确性
-    link_str = (
-        "magnet:?xt=urn:btih:4225824a42f4afceec51cf73ae85fdc76f14aebd&dn=Mind.Games.rar&tr=udp%3a%2f%2ftracker.torrent"
-        ".eu.org%3a451%2fannounce&tr=udp%3a%2f%2fexodus.desync.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker.moeking.me"
-        "%3a6969%2fannounce")
-    link_to_parse = magnetlinkParser(link_str).parse_magnetlink()
-
-    print(link_to_parse.info_hash)
-    print(link_to_parse.trackers)
-    print(link_to_parse.display_name)
-
-    link = magnetLink(link_str, link_to_parse.info_hash, link_to_parse.display_name, link_to_parse.trackers)
-    mag_link = link.generate_mag_link()
-    print(mag_link)
-    print(
-        "magnet:?xt=urn:btih:4225824a42f4afceec51cf73ae85fdc76f14aebd&dn=Mind.Games.rar&tr=udp%3a%2f%2ftracker.torrent"
-        ".eu.org%3a451%2fannounce&tr=udp%3a%2f%2fexodus.desync.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker.moeking.me"
-        "%3a6969%2fannounce")

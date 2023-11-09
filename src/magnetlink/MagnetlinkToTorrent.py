@@ -14,7 +14,7 @@ def get_torrent(url, file_path):
     response = requests.get(url)
     print("Converting...")
     if response.status_code == 200:
-        output_file = file_path + response.headers['Torrent-Name'] + '.torrent'
+        output_file = file_path + '/' + response.headers['Torrent-Name'] + '.torrent'
         decoded_text = unquote(output_file)
         with open(decoded_text, "wb") as f:
             f.write(response.content)
