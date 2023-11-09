@@ -1,11 +1,12 @@
-import os
-import requests
-import subprocess
 import concurrent.futures
-import time
 import logging
-from urllib.parse import urljoin
+import os
+import subprocess
 import threading
+import time
+from urllib.parse import urljoin
+
+import requests
 
 logging.basicConfig(level=logging.INFO)
 
@@ -123,7 +124,7 @@ def download_segments(segment_urls, output_dir):
 
                 print(
                     f"Downloaded {downloaded_segments}/{total_segments} segments - {progress:.2f}% complete ({show_speed:.2f} KB/s)",
-                    )
+                )
 
             except Exception as e:
                 print(f"Downloading of {url} generated an exception: {str(e)}")
@@ -138,7 +139,8 @@ def merge_segments(output_dir, output_filename):
     """
     ts_files = [os.path.join(output_dir, filename) for filename in os.listdir(output_dir) if filename.endswith(".ts")]
     try:
-        cmd = ['ffmpeg', '-i', 'concat:' + '|'.join(ts_files), '-c', 'copy', output_filename]
+        cmd = [r'D:\study\pycharm\project\hust2021-software-engineering\src\m3u8\ffmpeg', '-i',
+               'concat:' + '|'.join(ts_files), '-c', 'copy', output_filename]
         subprocess.run(cmd, check=True)
         print(f'Successfully merged {len(ts_files)} .ts files into {output_filename}')
     except subprocess.CalledProcessError as e:
