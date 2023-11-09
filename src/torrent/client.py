@@ -2,13 +2,13 @@ import asyncio
 import logging
 import os
 import time
-from asyncio import Queue, sleep
+from asyncio import Queue
 from typing import List
 
+from src.torrent.connection import Connection
 from src.torrent.manager import PieceManager
 from src.torrent.torrent import Torrent
 from src.torrent.tracker import Tracker
-from src.torrent.connection import Connection
 
 """
     @filename client.py
@@ -20,7 +20,7 @@ from src.torrent.connection import Connection
     封装了TorrentClient类,使用start()开始下载,stop()取消下载，pause()暂停下载，restart()继续下载
 """
 
-MAX_PEER_CONNECTIONS = 516  # 最大peers连接数
+MAX_PEER_CONNECTIONS = 100  # 最大peers连接数
 
 
 class TorrentClient:
