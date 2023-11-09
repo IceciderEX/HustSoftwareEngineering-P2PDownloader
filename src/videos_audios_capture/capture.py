@@ -52,4 +52,5 @@ def capture(url, path):
         except Exception:
             print("Some error occurred, maybe you should try again!")
 
+    print("Download successfully")
     return True
