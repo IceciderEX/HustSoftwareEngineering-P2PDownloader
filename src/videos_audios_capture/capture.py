@@ -15,6 +15,14 @@ def capture(url, path):
     if response.status_code != 200:
         return False
 
+    if url.endswith('.mp4'):
+        video_response = requests.get(url, headers=headers)
+        # 获取链接的文件名作为保存文件名
+        filename = os.path.basename(url)
+        with open(os.path.join(path, filename), 'wb') as f:
+            f.write(video_response.content)
+        return True
+
     page_content = response.text
     soup = BeautifulSoup(page_content, 'html.parser')
 
@@ -39,6 +47,7 @@ def capture(url, path):
                 f.write(video_response.content)
         except Exception:
             print("Some error occurred, maybe you should try again!")
+            return False
 
     for audio_link in audio_links:
         try:
@@ -51,6 +60,7 @@ def capture(url, path):
                 f.write(audio_response.content)
         except Exception:
             print("Some error occurred, maybe you should try again!")
+            return False
 
     print("Download successfully")
     return True

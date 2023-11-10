@@ -232,8 +232,15 @@ class capture_ui(QWidget, Ui_Capture):
         url = self.ui.lineEdit.text()
         path = self.ui.pushButton_path.text()
         self.worker = capture_thread(url, path)
+        self.worker.log_signal.connect(self.handle_capture_result)  # 连接信号和槽函数
         self.worker.start()
-        self.ui.pushButton.setText("捕获完成！")
+
+    def handle_capture_result(self, result):
+        # 在这里处理捕获的结果
+        if result:
+            self.ui.pushButton.setText("捕获完成！")
+        else:
+            self.ui.pushButton.setText("无支持的视频格式可捕获！")
 
 
 class torrent_ui(QWidget, Ui_torrent):
