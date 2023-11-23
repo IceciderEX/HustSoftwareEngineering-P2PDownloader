@@ -53,6 +53,3 @@ def capture(url, path):
             pass
 
     return True
-
-
-
