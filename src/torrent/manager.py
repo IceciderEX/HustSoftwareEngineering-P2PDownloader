@@ -37,15 +37,15 @@ class PieceManager:
         self.torrent = torrent
         self.peers: Dict[bytes, BitArray] = {}
         self.pending_blocks: List[PendingRequest] = []
-        self.missing_pieces: List[Piece] = []
-        self.ongoing_pieces: List[Piece] = []
+        self.missing_pieces: List[Piece] = []  # 缺失的pieces
+        self.ongoing_pieces: List[Piece] = []  # 正在请求block的pieces
         self.have_pieces: List[Piece] = []
-        self.max_pending_time = 20  # 1分钟
-        self.total_pieces = len(torrent.pieces)
+        self.max_pending_time = 20  # 等待重新开始请求block时间：1分钟
+        self.total_pieces = len(torrent.pieces)  # 所有的pieces数量
         self.missing_pieces: List[Piece] = self._init_pieces()
-        self.block_download_bytes = 0
+        self.block_download_bytes = 0  # 下载的总字节数
         self.files = self.torrent.get_files()
-        self.d_path = './'
+        self.d_path = './'  # 下载路径
 
     def _init_pieces(self) -> List[Piece]:
         """
@@ -61,11 +61,15 @@ class PieceManager:
                           for offset in range(std_num_blocks)]
             else:
                 last_piece_len = self.torrent.length % self.torrent.piece_length
-                num_blocks = math.ceil(last_piece_len / REQUEST_SIZE)
-                blocks = [Block(index, offset * REQUEST_SIZE, REQUEST_SIZE)
-                          for offset in range(num_blocks)]
-                if last_piece_len % REQUEST_SIZE > 0:
-                    blocks[-1].length = last_piece_len % REQUEST_SIZE
+                if last_piece_len != 0:
+                    num_blocks = math.ceil(last_piece_len / REQUEST_SIZE)
+                    blocks = [Block(index, offset * REQUEST_SIZE, REQUEST_SIZE)
+                              for offset in range(num_blocks)]
+                    if last_piece_len % REQUEST_SIZE > 0:
+                        blocks[-1].length = last_piece_len % REQUEST_SIZE
+                else:
+                    blocks = [Block(index, offset * REQUEST_SIZE, REQUEST_SIZE)
+                              for offset in range(std_num_blocks)]
             pieces.append(Piece(index, blocks, hash_value))
         return pieces
 
@@ -89,7 +93,7 @@ class PieceManager:
         :param bitfield: bitmap
         :return: 加入peer对应的piece bitmap
         """
-        self.peers[peer_id] = bitfield
+        self.peers[peer_id] = bitfield  # bitfield为该peer所拥有pieces的bitmap表示
 
     def update_peer(self, peer_id: bytes, index: int) -> None:
         """将Peer拥有的第index个piece标识为1
@@ -212,12 +216,15 @@ class PieceManager:
             for file_info in self.files:
                 file_path_parts = [self.d_path] + file_info['path']
                 file_path = os.path.join(*file_path_parts)
-            with open(file_path, 'wb') as file:
-                file.write(piece.data)
+            if piece.index == 0:
+                with open(file_path, 'wb') as file:
+                    file.write(piece.data)
+            else:
+                with open(file_path, 'ab') as file:
+                    file.write(piece.data)
 
     def next_request(self, peer_id: bytes) -> Optional[Block]:
         """
-
         block的请求优先级如下:
         1.在请求队列中,请求超时的block,重新请求
         2.请求ongoing队列中的piece缺少的block
@@ -242,14 +249,14 @@ class PieceManager:
         return block
 
     def block_received(self, peer_id: bytes, piece_index: int, block_offset: int, data: bytes) -> None:
-        """接受Block数据,如果一个Piece的全部数据都被接受,写回到文件
+        """接受一个Block数据,如果一个Piece的全部数据都被接受,写回到文件
 
         :param peer_id: Peer 标识
         :param piece_index: piece在torrent文件的index
         :param block_offset: block在piece中的偏移量
         :param data: 请求的block数据
         """
-        self.block_download_bytes += 16384
+        self.block_download_bytes += 16384  # 一个block的长度
 
         logging.debug(f"Received block {block_offset / REQUEST_SIZE} for piece {piece_index} from peer {peer_id}: ")
         # logging.info(self.show_info())
@@ -280,7 +287,7 @@ class PieceManager:
 
     def show_info(self):
         """
-        显示当前ongoing_pieces, missing_pieces, have_pieces的相关信息
+        显示当前ongoing_pieces, missing_pieces, have_pieces的相关信息（用于debug）
         :return:
         """
         str_info = '\nongoing:'
@@ -299,11 +306,11 @@ class PieceManager:
         下载进度接口
         :return:下载进度
         """
-        return len(self.have_pieces) / (self.total_pieces * 100)
+        return len(self.have_pieces) / self.total_pieces * 100
 
     def download_place(self, path):
         """
-            创建目录，指定下载位置接口
+        创建目录，指定下载位置接口
         :return: 无
         """
         self.d_path = path

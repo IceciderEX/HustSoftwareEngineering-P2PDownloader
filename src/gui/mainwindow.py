@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 
 ################################################################################
@@ -17,12 +18,22 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QLabel, QPushButton, QSizePolicy,
     QVBoxLayout, QWidget)
+=======
+from PySide6.QtCore import (QCoreApplication, QMetaObject, QSize, Qt)
+from PySide6.QtGui import (QFont, QIcon)
+from PySide6.QtWidgets import (QLabel, QPushButton, QVBoxLayout)
+
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
+<<<<<<< HEAD
         MainWindow.resize(436, 318)
+=======
+        MainWindow.resize(510, 412)
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
         icon = QIcon()
         icon.addFile(u"resource/logo.ico", QSize(), QIcon.Normal, QIcon.Off)
         MainWindow.setWindowIcon(icon)
@@ -31,7 +42,11 @@ class Ui_MainWindow(object):
         self.label = QLabel(MainWindow)
         self.label.setObjectName(u"label")
         font = QFont()
+<<<<<<< HEAD
         font.setFamilies([u"\u534e\u6587\u7ec6\u9ed1"])
+=======
+        font.setFamilies([u"\u534e\u6587\u6977\u4f53"])
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
         font.setPointSize(36)
         self.label.setFont(font)
         self.label.setAlignment(Qt.AlignCenter)
@@ -39,6 +54,21 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.addWidget(self.label)
 
+<<<<<<< HEAD
+=======
+        self.pushButton = QPushButton(MainWindow)
+        self.pushButton.setObjectName(u"pushButton")
+        self.pushButton.setCheckable(True)
+        self.pushButton.setChecked(False)
+
+        self.verticalLayout.addWidget(self.pushButton)
+
+        self.pushButton_magnetlink = QPushButton(MainWindow)
+        self.pushButton_magnetlink.setObjectName(u"pushButton_magnetlink")
+
+        self.verticalLayout.addWidget(self.pushButton_magnetlink)
+
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
         self.pushButton_m3u8 = QPushButton(MainWindow)
         self.pushButton_m3u8.setObjectName(u"pushButton_m3u8")
 
@@ -54,6 +84,7 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.addWidget(self.pushButton_mp3)
 
+<<<<<<< HEAD
         self.pushButton = QPushButton(MainWindow)
         self.pushButton.setObjectName(u"pushButton")
         self.pushButton.setCheckable(True)
@@ -76,3 +107,23 @@ class Ui_MainWindow(object):
         self.pushButton.setText(QCoreApplication.translate("MainWindow", u"torrent\u6587\u4ef6\u4e0b\u8f7d", None))
     # retranslateUi
 
+=======
+        self.retranslateUi(MainWindow)
+
+        QMetaObject.connectSlotsByName(MainWindow)
+
+    # setupUi
+
+    def retranslateUi(self, MainWindow):
+        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"Beholder/BT Torrent Downloader", None))
+        self.label.setText(QCoreApplication.translate("MainWindow", u"P2P\u4e0b\u8f7d\u5668", None))
+        self.pushButton.setText(QCoreApplication.translate("MainWindow", u"Torrent\u6587\u4ef6\u4e0b\u8f7d", None))
+        self.pushButton_magnetlink.setText(
+            QCoreApplication.translate("MainWindow", u"\u78c1\u529b\u94fe\u63a5\u8f6cTorrent\u6587\u4ef6", None))
+        self.pushButton_m3u8.setText(QCoreApplication.translate("MainWindow", u"M3U8\u89c6\u9891\u4e0b\u8f7d", None))
+        self.pushButton_reptiles.setText(
+            QCoreApplication.translate("MainWindow", u"\u7f51\u9875\u6355\u83b7\u97f3\u89c6\u9891", None))
+        self.pushButton_mp3.setText(
+            QCoreApplication.translate("MainWindow", u"\u89c6\u9891\u64ad\u653e\u5668", None))
+    # retranslateUi
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f

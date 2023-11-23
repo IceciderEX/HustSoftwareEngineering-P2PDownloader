@@ -14,10 +14,9 @@ import bitstring
         静态函数decode: 解码bytes类型,并返回一个对应类
 """
 
-
 class MsgId:
     """
-    枚举类,定义了通信状态
+    枚举类,定义了通信状态（0-8）
     """
     Choke = 0
     Unchoke = 1
@@ -46,6 +45,9 @@ class Message:
 
 
 class HandShake(Message):
+    """
+    握手消息，长度为49+19
+    """
     length = 49 + 19
 
     def __init__(self, info_hash: bytes, peer_id: bytes):
@@ -76,20 +78,26 @@ class KeepAlive:
 
 
 class Choke(Message):
-
+    """
+    Choke消息，表示不能接收数据
+    """
     def encode(self):
         return struct.pack('>Ib',
                            1, MsgId.Choke)
 
 
 class UnChoke(Message):
-
+    """
+    解除choke状态，可以发送/接收数据
+    """
     def encode(self):
         return struct.pack('>Ib', 1, MsgId.Unchoke)
 
 
 class Interested(Message):
-
+    """
+    Interested消息，表示感兴趣发送数据
+    """
     def encode(self):
         return struct.pack('>Ib', 1, MsgId.Interested)
 
@@ -98,12 +106,17 @@ class Interested(Message):
 
 
 class NotInterested(Message):
-
+    """
+    NotInterested消息，表示不感兴趣发送数据
+    """
     def encode(self):
         return struct.pack('>Ib', 1, MsgId.NotInterested)
 
 
 class Have(Message):
+    """
+    Have消息，表示拥有piece的相关信息
+    """
     def __init__(self, index) -> None:
         self.index = index
 
@@ -117,6 +130,9 @@ class Have(Message):
 
 
 class BitField(Message):
+    """
+    一个bitmap，表示该peer拥有的piece情况
+    """
     def __init__(self, bitfield):
         self.bitfield = bitstring.BitArray(bytes=bitfield)
 
@@ -134,7 +150,7 @@ class BitField(Message):
         return cls(parts[2])
 
 
-REQUEST_SIZE = 2 ** 14
+REQUEST_SIZE = 2 ** 14  # 一个block的长度
 
 
 class Request(Message):
@@ -162,6 +178,9 @@ class Request(Message):
 
 
 class Piece(Message):
+    """
+    Piece信息，包含索引与数据
+    """
     length = 9
 
     def __init__(self, index: int, begin: int, block: bytes):
@@ -191,6 +210,7 @@ class Piece(Message):
 
 class Cancel(Message):
     """
+    取消信息
     Message format:
          <len=0013><id=8><index><begin><length>
     """

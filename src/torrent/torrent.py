@@ -3,7 +3,6 @@ from hashlib import sha1
 from typing import List
 
 from src.torrent import bencoding
-import bencodepy
 
 """
     @filename torrent.py
@@ -26,8 +25,8 @@ class Torrent:
         with open(filepath, 'rb') as f:
             meta_info = f.read()  # bytes
             # OrderedDict，包括announce, announce-list, info(name, length, piece length, pieces)...
-            # self.meta_info = bencoding.Decode(meta_info).decode()
-            self.meta_info = bencodepy.decode(meta_info)
+            self.meta_info = bencoding.Decode(meta_info).decode()  # 使用自己编写的bencoding模块解码
+            # self.meta_info = bencodepy.decode(meta_info)
 
             # 由info进行bencode.encode得到infohash(bytes)
             info_hash = bencoding.Encode(self.meta_info[b'info']).encode()
@@ -46,7 +45,11 @@ class Torrent:
     @property
     def length(self) -> int:
         """
+<<<<<<< HEAD
         :return: 返回 下载时下载文件的总大小
+=======
+        :return: 返回下载时下载文件的总大小
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
         """
         if b'info' in self.meta_info:
             info = self.meta_info[b'info']
@@ -96,7 +99,7 @@ class Torrent:
     @property
     def trackers(self) -> List[str]:
         """
-        Return a list of all trackers in the torrent.
+        返回torrent文件中包含的所有trackers信息（dict形式）
         """
         if b'announce-list' in self.meta_info:
             return [url.decode('utf-8') for tier in self.meta_info[b'announce-list'] for url in tier]

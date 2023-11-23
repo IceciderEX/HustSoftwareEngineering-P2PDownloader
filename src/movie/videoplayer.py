@@ -1,10 +1,5 @@
-# Copyright (C) 2022 The Qt Company Ltd.
-# SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
-
-"""PySide6 Multimedia player example"""
-
 import sys
-from PySide6.QtCore import QStandardPaths, Qt, Slot, QTime
+from PySide6.QtCore import QStandardPaths, Qt, Slot, QTime, QSize
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog,
                                QMainWindow, QSlider, QStyle, QToolBar, QVBoxLayout, QLabel)
@@ -12,14 +7,18 @@ from PySide6.QtMultimedia import (QAudioOutput, QMediaFormat,
                                   QMediaPlayer)
 from PySide6.QtMultimediaWidgets import QVideoWidget
 
+"""
+实现视频播放器的UI界面
+"""
 
-AVI = "video/x-msvideo"  # AVI
-
-
-MP4 = "C:/Users/Icecider/Videos/Desktop/test.mp4"
+AVI = "video/x-msvideo"  # AVI，支持的视频格式
 
 
 def get_supported_mime_types():
+    """
+    得到支持的视频格式
+    :return: 视频格式
+    """
     result = []
     for f in QMediaFormat().supportedFileFormats(QMediaFormat.Decode):
         mime_type = QMediaFormat(f).mimeType()
@@ -32,18 +31,23 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self._playlist = []  # FIXME 6.3: Replace by QMediaPlaylist?
+        self._playlist = []
         self._playlist_index = -1
         self._audio_output = QAudioOutput()
         self._player = QMediaPlayer()
         self._player.setAudioOutput(self._audio_output)
+        self.setWindowTitle("视频播放器")
 
+        self.resize(1024, 800)
+        icon = QIcon()
+        icon.addFile(u"../gui/resource/logo.ico", QSize(), QIcon.Normal, QIcon.Off)
+        self.setWindowIcon(icon)
         self._player.errorOccurred.connect(self._player_error)
 
         tool_bar = QToolBar()
         self.addToolBar(tool_bar)
 
-        file_menu = self.menuBar().addMenu("&File")
+        file_menu = self.menuBar().addMenu("&File")  # 文件菜单（用于打开文件）
         icon = QIcon.fromTheme("document-open")
         open_action = QAction(icon, "&Open...", self,
                               shortcut=QKeySequence.Open, triggered=self.open)
@@ -54,6 +58,7 @@ class MainWindow(QMainWindow):
                               shortcut="Ctrl+Q", triggered=self.close)
         file_menu.addAction(exit_action)
 
+        # 以下为播放，上一次，暂停，下一个，停止的bar
         play_menu = self.menuBar().addMenu("&Play")
         style = self.style()
         icon = QIcon.fromTheme("media-playback-start.png",
@@ -125,6 +130,9 @@ class MainWindow(QMainWindow):
 
     # 更新进度条
     def update_progress_slider(self, position):
+        """
+        用于更新视频进度条的显示
+        """
         duration = self._player.duration()
         self._progress_slider.setMaximum(duration)
         self._progress_slider.setValue(position)
@@ -145,9 +153,15 @@ class MainWindow(QMainWindow):
     # 设置播放位置
     @Slot(int)
     def set_position(self, position):
+        """
+        设置播放位置
+        """
         self._player.setPosition(position)
 
     def closeEvent(self, event):
+        """
+        停止
+        """
         self._ensure_stopped()
         event.accept()
 
@@ -161,14 +175,8 @@ class MainWindow(QMainWindow):
             self._mime_types = get_supported_mime_types()
             if (is_windows and AVI not in self._mime_types):
                 self._mime_types.append(AVI)
-            elif MP4 not in self._mime_types:
-                self._mime_types.append(MP4)
 
         file_dialog.setMimeTypeFilters(self._mime_types)
-
-        default_mimetype = AVI if is_windows else MP4
-        if default_mimetype in self._mime_types:
-            file_dialog.selectMimeTypeFilter(default_mimetype)
 
         movies_location = QStandardPaths.writableLocation(QStandardPaths.MoviesLocation)
         file_dialog.setDirectory(movies_location)
@@ -205,7 +213,7 @@ class MainWindow(QMainWindow):
     def update_buttons(self, state):
         media_count = len(self._playlist)
         self._play_action.setEnabled(media_count > 0
-            and state != QMediaPlayer.PlayingState)
+                                     and state != QMediaPlayer.PlayingState)
         self._pause_action.setEnabled(state == QMediaPlayer.PlayingState)
         self._stop_action.setEnabled(state != QMediaPlayer.StoppedState)
         self._previous_action.setEnabled(self._player.position() > 0)

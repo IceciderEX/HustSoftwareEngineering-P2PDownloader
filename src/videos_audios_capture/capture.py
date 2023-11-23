@@ -1,8 +1,14 @@
+import os
+from urllib.parse import urljoin
+
 import requests
 from bs4 import BeautifulSoup
+<<<<<<< HEAD
 import os
 import re
 from urllib.parse import urljoin
+=======
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
 
 
 def capture(url, path):
@@ -37,8 +43,13 @@ def capture(url, path):
             filename = os.path.basename(video_url)
             with open(os.path.join(path, filename), 'wb') as f:
                 f.write(video_response.content)
+<<<<<<< HEAD
         except:
             pass
+=======
+        except Exception:
+            print("Some error occurred, maybe you should try again!")
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
 
     for audio_link in audio_links:
         try:
@@ -49,7 +60,14 @@ def capture(url, path):
             filename = os.path.basename(audio_url)
             with open(os.path.join(path, filename), 'wb') as f:
                 f.write(audio_response.content)
+<<<<<<< HEAD
         except:
             pass
 
     return True
+=======
+        except Exception:
+            print("Some error occurred, maybe you should try again!")
+
+    return True
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f

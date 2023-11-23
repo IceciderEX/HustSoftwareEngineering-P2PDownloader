@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 
 ################################################################################
@@ -17,6 +18,11 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QLabel, QSizePolicy, QVBoxLayout,
     QWidget)
+=======
+from PySide6.QtCore import (QCoreApplication, QMetaObject, Qt)
+from PySide6.QtWidgets import (QLabel, QVBoxLayout)
+
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
 
 class Ui_small_capture(object):
     def setupUi(self, small_capture):
@@ -31,14 +37,24 @@ class Ui_small_capture(object):
 
         self.verticalLayout.addWidget(self.label)
 
+<<<<<<< HEAD
 
         self.retranslateUi(small_capture)
 
         QMetaObject.connectSlotsByName(small_capture)
+=======
+        self.retranslateUi(small_capture)
+
+        QMetaObject.connectSlotsByName(small_capture)
+
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
     # setupUi
 
     def retranslateUi(self, small_capture):
         small_capture.setWindowTitle(QCoreApplication.translate("small_capture", u"Form", None))
         self.label.setText(QCoreApplication.translate("small_capture", u"TextLabel", None))
     # retranslateUi
+<<<<<<< HEAD
 
+=======
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f

@@ -1,14 +1,17 @@
-import sys
 import asyncio
 import logging
 import signal
 from asyncio import CancelledError
 
+<<<<<<< HEAD
 from src.gui.mainwindow import Ui_MainWindow
+=======
+from PySide6.QtWidgets import QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog
+
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
 from src.torrent.client import TorrentClient
 from src.torrent.torrent import Torrent
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog
+
 
 class TorrentFileSelectorApp(QMainWindow):
     def __init__(self):
@@ -53,6 +56,7 @@ class TorrentFileSelectorApp(QMainWindow):
                 loop.run_until_complete(task)
             except CancelledError:
                 logging.warning('Event loop was canceled')
+<<<<<<< HEAD
 
 
 # def main():
@@ -74,3 +78,5 @@ class TorrentFileSelectorApp(QMainWindow):
 #
 # if __name__ == "__main__":
 #     main()
+=======
+>>>>>>> f380bd248a44e99d1dc87085ebda5125608c9d1f
