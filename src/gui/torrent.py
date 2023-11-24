@@ -78,7 +78,7 @@ class Ui_torrent(object):
 
     def retranslateUi(self, torrent):
         torrent.setWindowTitle(QCoreApplication.translate("torrent", u"torrent\u6587\u4ef6\u9009\u62e9", None))
-        self.label.setText(QCoreApplication.translate("torrent", u"Torrent\u6587\u4ef6\u9009\u62e9\u5668", None))
+        self.label.setText(QCoreApplication.translate("torrent", u"torrent\u6587\u4ef6\u4e0b\u8f7d\u5668", None))
         self.pushButton_start.setText(QCoreApplication.translate("torrent", u"\u5f00\u59cb", None))
         self.pushButton_restart.setText(QCoreApplication.translate("torrent", u"\u7ee7\u7eed", None))
         self.pushButton_pause.setText(QCoreApplication.translate("torrent", u"\u6682\u505c", None))
