@@ -48,18 +48,19 @@ class TorrentClient:
         while not self.available_peers.empty():
             self.available_peers.get_nowait()
 
-    def stop(self):
+        def stop(self):
         """
         终止下载torrent（不能再恢复）
         :return:
         """
         self.abort = True
-        logging.info(f'Download Canceled')
-        for file_info in self.piece_manager.files:
-            file_path_parts = [self.piece_manager.d_path] + file_info['path']
-            file_path = os.path.join(*file_path_parts)
-            if os.path.exists(file_path):
-                os.remove(file_path)
+        if not self.piece_manager.finished:
+            logging.info(f'Download Canceled')
+            for file_info in self.piece_manager.files:
+                file_path_parts = [self.piece_manager.d_path] + file_info['path']
+                file_path = os.path.join(*file_path_parts)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
         for peer in self.peers:
             peer.stop()
         for tracker in self.trackers:
